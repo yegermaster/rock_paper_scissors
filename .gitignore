@@ -17,6 +17,7 @@ downloads/
 eggs/
 .eggs/
 lib/
+!shared-schedule/lib/
 lib64/
 parts/
 sdist/
