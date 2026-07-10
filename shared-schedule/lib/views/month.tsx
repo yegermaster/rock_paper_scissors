@@ -1,16 +1,18 @@
-import { WEEKDAY_LABELS, addDays, dayOfWeek, daysInMonth, MONTH_LABELS } from "../dates";
+import { WEEKDAY_LABELS, dayOfWeek, daysInMonth, MONTH_LABELS } from "../dates";
 import { hebrewDateShort } from "../hebrew-date";
+import { he } from "../bidi";
 import { chipColors, displayStartMinutes, truncate } from "../render-helpers";
 import type { Occurrence } from "../types";
 
 const WIDTH = 1900;
-const HEADER_HEIGHT = 84;
-const WEEKDAY_ROW_HEIGHT = 42;
+const HEADER_HEIGHT = 110;
+const WEEKDAY_ROW_HEIGHT = 48;
 const MAX_CHIPS_PER_CELL = 3;
 const CELL_HEIGHT = 190;
+const ACCENT = "#4f46e5";
 
-// Hebrew reads right-to-left: reverse each week row so Sunday is on the
-// right edge and Saturday on the left.
+// Hebrew calendar convention: weeks flow right-to-left — Sunday is the
+// rightmost cell of each row. Reverse each row's physical order.
 function toRtlRow<T>(row: T[]): T[] {
   return [...row].reverse();
 }
@@ -63,15 +65,16 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: 38,
-          fontWeight: 700,
-          color: "#111827",
+          fontSize: 44,
+          fontWeight: 800,
+          color: "#ffffff",
+          backgroundImage: `linear-gradient(135deg, ${ACCENT}, #7c3aed)`,
         }}
       >
-        {MONTH_LABELS[month - 1]} {year}
+        {he(`${MONTH_LABELS[month - 1]} ${year}`)}
       </div>
 
-      <div style={{ display: "flex", width: WIDTH, height: WEEKDAY_ROW_HEIGHT }}>
+      <div style={{ display: "flex", width: WIDTH, height: WEEKDAY_ROW_HEIGHT, backgroundColor: "#f3f4f6" }}>
         {toRtlRow(WEEKDAY_LABELS).map((label, i) => (
           <div
             key={i}
@@ -80,11 +83,12 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: 16,
-              color: "#6b7280",
+              fontSize: 17,
+              fontWeight: 700,
+              color: "#4b5563",
             }}
           >
-            {label}
+            {he(label)}
           </div>
         ))}
       </div>
@@ -109,6 +113,8 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
               }
               const dayNum = Number(cell.date.slice(-2));
               const isToday = cell.date === today;
+              const dow = dayOfWeek(cell.date);
+              const isWeekend = dow === 5 || dow === 6;
               const dayOccs = byDay.get(cell.date) ?? [];
               const visible = dayOccs.slice(0, MAX_CHIPS_PER_CELL);
               const overflow = dayOccs.length - visible.length;
@@ -122,26 +128,33 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
                     display: "flex",
                     flexDirection: "column",
                     border: "1px solid #f1f5f9",
-                    backgroundColor: isToday ? "#eef2ff" : "#ffffff",
-                    padding: 6,
+                    backgroundColor: isToday ? "#eef2ff" : isWeekend ? "#f8fafc" : "#ffffff",
+                    padding: 8,
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+                  {/* Day number on the RIGHT (RTL reading start), Hebrew date left */}
+                  <div style={{ display: "flex", flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between" }}>
                     <div
                       style={{
-                        fontSize: 18,
-                        fontWeight: isToday ? 700 : 400,
-                        color: isToday ? "#4f46e5" : "#374151",
+                        fontSize: 20,
+                        fontWeight: isToday ? 800 : 500,
+                        color: isToday ? "#ffffff" : "#374151",
                         display: "flex",
+                        backgroundColor: isToday ? ACCENT : "transparent",
+                        width: 34,
+                        height: 34,
+                        borderRadius: 999,
+                        alignItems: "center",
+                        justifyContent: "center",
                       }}
                     >
                       {dayNum}
                     </div>
                     <div style={{ fontSize: 12, color: "#9ca3af", display: "flex" }}>
-                      {hebrewDateShort(cell.date)}
+                      {he(hebrewDateShort(cell.date))}
                     </div>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", marginTop: 4 }}>
+                  <div style={{ display: "flex", flexDirection: "column", marginTop: 6 }}>
                     {visible.map((occ) => {
                       const colors = chipColors(occ.event.category);
                       const isSpanContinuation = occ.isMultiDaySpan && occ.date !== occ.spanStart;
@@ -150,24 +163,26 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
                           key={occ.event.id + occ.date}
                           style={{
                             display: "flex",
+                            justifyContent: "flex-end",
                             fontSize: 14,
-                            fontWeight: 600,
+                            fontWeight: 700,
                             backgroundColor: colors.bg,
                             color: colors.text,
-                            border: `1px solid ${colors.border}`,
-                            borderRadius: 5,
-                            padding: "3px 6px",
-                            marginBottom: 3,
+                            borderRadius: 6,
+                            padding: "4px 8px",
+                            marginBottom: 4,
                             overflow: "hidden",
                           }}
                         >
-                          {isSpanContinuation ? "← " + truncate(occ.event.title, 12) : truncate(occ.event.title, 14)}
+                          {isSpanContinuation
+                            ? he(truncate(occ.event.title, 12)) + " ←"
+                            : he(truncate(occ.event.title, 14))}
                         </div>
                       );
                     })}
                     {overflow > 0 && (
-                      <div style={{ display: "flex", fontSize: 13, color: "#9ca3af" }}>
-                        +{overflow} עוד
+                      <div style={{ display: "flex", justifyContent: "flex-end", fontSize: 13, fontWeight: 600, color: "#9ca3af" }}>
+                        {he(`ועוד ${overflow}`)}
                       </div>
                     )}
                   </div>

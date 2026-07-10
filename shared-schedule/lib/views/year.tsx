@@ -1,14 +1,16 @@
 import { dayOfWeek, daysInMonth, MONTH_LABELS } from "../dates";
+import { he } from "../bidi";
 import { chipColors } from "../render-helpers";
 import type { Occurrence } from "../types";
 
 const WIDTH = 1900;
-const HEADER_HEIGHT = 84;
+const HEADER_HEIGHT = 110;
 const COLS = 4;
 const ROWS = 3;
 const MINI_WIDTH = WIDTH / COLS;
 const MINI_HEIGHT = 340;
 const DOT_SIZE = 7;
+const ACCENT = "#4f46e5";
 
 export function renderYearView(yearStart: string, occurrences: Occurrence[], today: string) {
   const year = Number(yearStart.slice(0, 4));
@@ -38,9 +40,10 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: 38,
-          fontWeight: 700,
-          color: "#111827",
+          fontSize: 44,
+          fontWeight: 800,
+          color: "#ffffff",
+          backgroundImage: `linear-gradient(135deg, ${ACCENT}, #7c3aed)`,
         }}
       >
         {year}
@@ -50,16 +53,16 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
         {Array.from({ length: ROWS }, (_, rowIdx) => (
           <div key={rowIdx} style={{ display: "flex", width: WIDTH, height: MINI_HEIGHT }}>
             {Array.from({ length: COLS }, (_, colIdx) => {
-              // Hebrew reads right-to-left: reverse column order so month 1
-              // ends up on the right edge of the first row.
-              const displayColIdx = COLS - 1 - colIdx;
-              const monthIdx = rowIdx * COLS + displayColIdx; // 0-11
+              // RTL: January sits at the RIGHT edge of the first row.
+              const monthIdx = rowIdx * COLS + (COLS - 1 - colIdx); // 0-11
               const month1 = monthIdx + 1;
               const totalDays = daysInMonth(year, month1);
               const monthStart = `${year}-${String(month1).padStart(2, "0")}-01`;
               const firstWeekday = dayOfWeek(monthStart);
               const totalCells = Math.ceil((firstWeekday + totalDays) / 7) * 7;
               const dayCellSize = (MINI_WIDTH - 16) / 7;
+              // Months spanning 6 week-rows must still fit inside MINI_HEIGHT.
+              const rowHeight = 44;
 
               const cells: (number | null)[] = [];
               for (let i = 0; i < totalCells; i++) {
@@ -81,15 +84,15 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
                     border: "1px solid #f1f5f9",
                   }}
                 >
-                  <div style={{ fontSize: 18, fontWeight: 700, color: "#374151", display: "flex", marginBottom: 6 }}>
-                    {MONTH_LABELS[monthIdx]}
+                  <div style={{ fontSize: 20, fontWeight: 800, color: ACCENT, display: "flex", justifyContent: "flex-end", marginBottom: 6 }}>
+                    {he(MONTH_LABELS[monthIdx])}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column" }}>
                     {miniRows.map((mrow, mri) => (
                       <div key={mri} style={{ display: "flex" }}>
                         {[...mrow].reverse().map((dayNum, di) => {
                           if (dayNum === null) {
-                            return <div key={di} style={{ width: dayCellSize, height: dayCellSize, display: "flex" }} />;
+                            return <div key={di} style={{ width: dayCellSize, height: rowHeight, display: "flex" }} />;
                           }
                           const date = `${year}-${String(month1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
                           const isToday = date === today;
@@ -101,7 +104,7 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
                               key={di}
                               style={{
                                 width: dayCellSize,
-                                height: dayCellSize,
+                                height: rowHeight,
                                 display: "flex",
                                 flexDirection: "column",
                                 alignItems: "center",
@@ -111,8 +114,9 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
                               <div
                                 style={{
                                   fontSize: 13,
+                                  fontWeight: isToday ? 700 : 500,
                                   color: isToday ? "#ffffff" : "#4b5563",
-                                  backgroundColor: isToday ? "#4f46e5" : "transparent",
+                                  backgroundColor: isToday ? ACCENT : "transparent",
                                   borderRadius: 999,
                                   width: 20,
                                   height: 20,

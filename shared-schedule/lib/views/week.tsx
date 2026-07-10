@@ -1,5 +1,6 @@
 import { WEEKDAY_LABELS, addDays, dayOfWeek } from "../dates";
 import { hebrewDateShort } from "../hebrew-date";
+import { he } from "../bidi";
 import {
   GRID_START_MINUTES,
   GRID_END_MINUTES,
@@ -15,16 +16,22 @@ const GUTTER = 84;
 const DAY_WIDTH = (WIDTH - GUTTER) / 7;
 const HOUR_HEIGHT = 56;
 const GRID_HEIGHT = ((GRID_END_MINUTES - GRID_START_MINUTES) / 60) * HOUR_HEIGHT;
-const HEADER_HEIGHT = 108;
-const SPAN_ROW_HEIGHT = 42;
+const HEADER_HEIGHT = 120;
+const SPAN_ROW_HEIGHT = 44;
 const MAX_SPAN_ROWS = 2;
+const ACCENT = "#4f46e5";
 
-// Hebrew calendar reads right-to-left: Sunday renders on the right edge
-// (adjacent to the hour gutter, which itself moves to the right), Saturday
-// on the left. `colX` maps a chronological day index (0=Sun..6=Sat) to its
-// physical x-position for absolutely-positioned elements (span bars).
+// Hebrew calendar convention: the week flows right-to-left — Sunday is the
+// RIGHTMOST column (next to the hour gutter on the right edge), Saturday
+// leftmost. `colX` maps a chronological day index (0=Sun..6=Sat) to the
+// physical left-x of its column, for absolutely-positioned span bars.
 function colX(chronoIndex: number): number {
   return (6 - chronoIndex) * DAY_WIDTH;
+}
+
+function isWeekend(ymd: string): boolean {
+  const dow = dayOfWeek(ymd);
+  return dow === 5 || dow === 6; // Fri/Sat — the Israeli weekend
 }
 
 export function renderWeekView(
@@ -33,7 +40,7 @@ export function renderWeekView(
   today: string
 ) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-  const displayDays = [...days].reverse(); // Sat..Sun, for right-to-left flex order
+  const displayDays = [...days].reverse(); // Sat..Sun in physical left-to-right order
 
   const byDay = new Map<string, Occurrence[]>();
   for (const d of days) byDay.set(d, []);
@@ -76,7 +83,7 @@ export function renderWeekView(
   const hourMarks: number[] = [];
   for (let m = GRID_START_MINUTES; m <= GRID_END_MINUTES; m += 60) hourMarks.push(m);
 
-  const height = HEADER_HEIGHT + spanAreaHeight + GRID_HEIGHT + 20;
+  const height = HEADER_HEIGHT + spanAreaHeight + GRID_HEIGHT + 24;
 
   const node = (
     <div
@@ -89,8 +96,15 @@ export function renderWeekView(
         fontFamily: "Noto Sans Hebrew",
       }}
     >
-      {/* Header row: day cells (Sat..Sun, left-to-right), gutter last (right edge) */}
-      <div style={{ display: "flex", width: WIDTH, height: HEADER_HEIGHT }}>
+      {/* Header: day cells Sat..Sun (physical LTR), hour gutter at right edge */}
+      <div
+        style={{
+          display: "flex",
+          width: WIDTH,
+          height: HEADER_HEIGHT,
+          backgroundImage: `linear-gradient(135deg, ${ACCENT}, #7c3aed)`,
+        }}
+      >
         {displayDays.map((d) => {
           const isToday = d === today;
           return (
@@ -102,25 +116,29 @@ export function renderWeekView(
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                backgroundColor: isToday ? "#eef2ff" : "#ffffff",
-                borderBottom: "2px solid #e5e7eb",
               }}
             >
-              <div style={{ fontSize: 19, color: "#6b7280", display: "flex" }}>
-                {WEEKDAY_LABELS[dayOfWeek(d)]}
+              <div style={{ fontSize: 19, color: "rgba(255,255,255,0.75)", display: "flex" }}>
+                {he(WEEKDAY_LABELS[dayOfWeek(d)])}
               </div>
               <div
                 style={{
-                  fontSize: 32,
-                  fontWeight: 700,
-                  color: isToday ? "#4f46e5" : "#111827",
+                  fontSize: 34,
+                  fontWeight: 800,
+                  color: "#ffffff",
                   display: "flex",
+                  backgroundColor: isToday ? "rgba(255,255,255,0.25)" : "transparent",
+                  borderRadius: 999,
+                  width: 56,
+                  height: 56,
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
                 {Number(d.slice(-2))}
               </div>
-              <div style={{ fontSize: 15, color: "#9ca3af", display: "flex" }}>
-                {hebrewDateShort(d)}
+              <div style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", display: "flex" }}>
+                {he(hebrewDateShort(d))}
               </div>
             </div>
           );
@@ -129,7 +147,7 @@ export function renderWeekView(
       </div>
 
       {/* Multi-day span bars */}
-      <div style={{ display: "flex", flexDirection: "column", width: WIDTH }}>
+      <div style={{ display: "flex", flexDirection: "column", width: WIDTH, backgroundColor: "#fafaff" }}>
         {visibleSpanRows.map((row, rowIdx) => (
           <div key={rowIdx} style={{ display: "flex", width: WIDTH, height: SPAN_ROW_HEIGHT, position: "relative" }}>
             {row.map((span) => {
@@ -139,7 +157,7 @@ export function renderWeekView(
                 days.length - 1
               );
               const colors = chipColors(span.event.category);
-              // Physical left edge = the later (rightward, since RTL) chrono day's column start.
+              // RTL grid: the chronologically-later day sits further LEFT.
               const left = colX(endIdx);
               const width = (endIdx - startIdx + 1) * DAY_WIDTH - 4;
               return (
@@ -151,17 +169,17 @@ export function renderWeekView(
                     width,
                     height: SPAN_ROW_HEIGHT - 8,
                     backgroundColor: colors.bg,
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: 8,
+                    borderRadius: 10,
                     display: "flex",
                     alignItems: "center",
-                    paddingRight: 12,
-                    fontSize: 17,
-                    fontWeight: 600,
+                    justifyContent: "flex-end",
+                    paddingRight: 14,
+                    fontSize: 18,
+                    fontWeight: 700,
                     color: colors.text,
                   }}
                 >
-                  {truncate(span.event.title, 40)}
+                  {he(truncate(span.event.title, 40))}
                 </div>
               );
             })}
@@ -169,9 +187,8 @@ export function renderWeekView(
         ))}
       </div>
 
-      {/* Time grid */}
+      {/* Time grid: day columns Sat..Sun, hour gutter at right edge */}
       <div style={{ display: "flex", width: WIDTH, height: GRID_HEIGHT, position: "relative" }}>
-        {/* Day columns, Sat..Sun left-to-right */}
         {displayDays.map((d) => {
           const laidOut = layoutDayColumn(byDay.get(d) ?? [], HOUR_HEIGHT);
           const isToday = d === today;
@@ -183,10 +200,27 @@ export function renderWeekView(
                 height: GRID_HEIGHT,
                 position: "relative",
                 display: "flex",
-                backgroundColor: isToday ? "#fafaff" : "#ffffff",
-                borderLeft: "1px solid #f1f5f9",
+                backgroundColor: isToday ? "#eef2ff" : isWeekend(d) ? "#f8fafc" : "#ffffff",
+                borderLeft: "1px solid #eef2f7",
               }}
             >
+              {/* Hour gridlines */}
+              {hourMarks.map((m, i) =>
+                i === 0 ? null : (
+                  <div
+                    key={m}
+                    style={{
+                      position: "absolute",
+                      top: i * HOUR_HEIGHT,
+                      left: 0,
+                      width: DAY_WIDTH,
+                      height: 1,
+                      backgroundColor: "#eef2f7",
+                      display: "flex",
+                    }}
+                  />
+                )
+              )}
               {laidOut.map((block) => {
                 const colors = chipColors(block.occ.event.category);
                 const blockWidth = DAY_WIDTH / block.numCols;
@@ -200,22 +234,30 @@ export function renderWeekView(
                       width: blockWidth - 4,
                       height: block.height - 3,
                       backgroundColor: colors.bg,
-                      border: `1px solid ${colors.border}`,
-                      borderRadius: 6,
+                      borderRadius: 8,
                       display: "flex",
                       flexDirection: "column",
+                      alignItems: "flex-end",
                       overflow: "hidden",
-                      padding: 4,
-                      fontSize: 14,
+                      padding: 8,
+                      fontSize: 16,
                       color: colors.text,
                     }}
                   >
-                    <div style={{ fontWeight: 700, display: "flex" }}>
-                      {truncate(block.occ.event.title, 18)}
+                    <div style={{ fontWeight: 800, display: "flex" }}>
+                      {he(truncate(block.occ.event.title, 18))}
                     </div>
+                    {block.occ.event.start_time && (
+                      <div style={{ fontSize: 13, opacity: 0.9, display: "flex" }}>
+                        {minutesToLabel(
+                          Number(block.occ.event.start_time.slice(0, 2)) * 60 +
+                            Number(block.occ.event.start_time.slice(3, 5))
+                        )}
+                      </div>
+                    )}
                     {block.occ.event.person && (
-                      <div style={{ fontSize: 12, opacity: 0.8, display: "flex" }}>
-                        {block.occ.event.person}
+                      <div style={{ fontSize: 13, opacity: 0.9, display: "flex" }}>
+                        {he(block.occ.event.person)}
                       </div>
                     )}
                   </div>
@@ -226,7 +268,7 @@ export function renderWeekView(
         })}
 
         {/* Hour gutter, right edge */}
-        <div style={{ width: GUTTER, display: "flex", flexDirection: "column" }}>
+        <div style={{ width: GUTTER, display: "flex", flexDirection: "column", borderLeft: "1px solid #eef2f7" }}>
           {hourMarks.map((m) => (
             <div
               key={m}
@@ -234,9 +276,10 @@ export function renderWeekView(
                 height: HOUR_HEIGHT,
                 display: "flex",
                 alignItems: "flex-start",
-                justifyContent: "flex-start",
-                paddingLeft: 8,
+                justifyContent: "center",
+                paddingTop: 4,
                 fontSize: 14,
+                fontWeight: 600,
                 color: "#9ca3af",
               }}
             >
