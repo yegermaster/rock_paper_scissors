@@ -1,4 +1,5 @@
 import { WEEKDAY_LABELS, addDays, dayOfWeek, daysInMonth, MONTH_LABELS } from "../dates";
+import { hebrewDateShort } from "../hebrew-date";
 import { chipColors, displayStartMinutes, truncate } from "../render-helpers";
 import type { Occurrence } from "../types";
 
@@ -6,7 +7,13 @@ const WIDTH = 1400;
 const HEADER_HEIGHT = 60;
 const WEEKDAY_ROW_HEIGHT = 30;
 const MAX_CHIPS_PER_CELL = 3;
-const CELL_HEIGHT = 130;
+const CELL_HEIGHT = 140;
+
+// Hebrew reads right-to-left: reverse each week row so Sunday is on the
+// right edge and Saturday on the left.
+function toRtlRow<T>(row: T[]): T[] {
+  return [...row].reverse();
+}
 
 export function renderMonthView(monthStart: string, occurrences: Occurrence[], today: string) {
   const [year, month] = monthStart.split("-").map(Number);
@@ -35,17 +42,19 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
     }
   }
   const rows: (typeof cells)[] = [];
-  for (let i = 0; i < cells.length; i += 7) rows.push(cells.slice(i, i + 7));
+  for (let i = 0; i < cells.length; i += 7) rows.push(toRtlRow(cells.slice(i, i + 7)));
 
-  return (
+  const height = HEADER_HEIGHT + WEEKDAY_ROW_HEIGHT + rows.length * CELL_HEIGHT;
+
+  const node = (
     <div
       style={{
         width: WIDTH,
-        height: HEADER_HEIGHT + WEEKDAY_ROW_HEIGHT + rows.length * CELL_HEIGHT,
+        height,
         display: "flex",
         flexDirection: "column",
         backgroundColor: "#ffffff",
-        fontFamily: "sans-serif",
+        fontFamily: "Noto Sans Hebrew",
       }}
     >
       <div
@@ -63,9 +72,9 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
       </div>
 
       <div style={{ display: "flex", width: WIDTH, height: WEEKDAY_ROW_HEIGHT }}>
-        {WEEKDAY_LABELS.map((label) => (
+        {toRtlRow(WEEKDAY_LABELS).map((label, i) => (
           <div
-            key={label}
+            key={i}
             style={{
               width: cellWidth,
               display: "flex",
@@ -117,15 +126,20 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
                     padding: 4,
                   }}
                 >
-                  <div
-                    style={{
-                      fontSize: 13,
-                      fontWeight: isToday ? 700 : 400,
-                      color: isToday ? "#4f46e5" : "#374151",
-                      display: "flex",
-                    }}
-                  >
-                    {dayNum}
+                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: isToday ? 700 : 400,
+                        color: isToday ? "#4f46e5" : "#374151",
+                        display: "flex",
+                      }}
+                    >
+                      {dayNum}
+                    </div>
+                    <div style={{ fontSize: 8, color: "#9ca3af", display: "flex" }}>
+                      {hebrewDateShort(cell.date)}
+                    </div>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", marginTop: 2 }}>
                     {visible.map((occ) => {
@@ -146,13 +160,13 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
                             overflow: "hidden",
                           }}
                         >
-                          {isSpanContinuation ? "→ " + truncate(occ.event.title, 12) : truncate(occ.event.title, 14)}
+                          {isSpanContinuation ? "← " + truncate(occ.event.title, 12) : truncate(occ.event.title, 14)}
                         </div>
                       );
                     })}
                     {overflow > 0 && (
                       <div style={{ display: "flex", fontSize: 10, color: "#9ca3af" }}>
-                        +{overflow} more
+                        +{overflow} עוד
                       </div>
                     )}
                   </div>
@@ -164,4 +178,6 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
       </div>
     </div>
   );
+
+  return { node, width: WIDTH, height };
 }

@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
   const text = body?.text;
   const context: string | null = typeof body?.context === "string" ? body.context : null;
   if (!text || typeof text !== "string") {
-    return NextResponse.json({ ok: false, message: "No message text provided." }, { status: 400 });
+    return NextResponse.json({ ok: false, message: "לא התקבל טקסט." }, { status: 400 });
   }
 
   const currentDate = todayInAppTimezone();
@@ -70,19 +70,19 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error("Gemini parse failed", err);
     return NextResponse.json(
-      { ok: false, message: "Couldn't reach the parser — try again in a moment." },
+      { ok: false, message: "לא הצלחתי להתחבר למנוע הניתוח — נסה שוב בעוד רגע." },
       { status: 502 }
     );
   }
 
   if (parsed.needs_clarification || parsed.intent === "unknown") {
-    return clarify(parsed.clarification_question ?? "Sorry, I didn't understand that — can you rephrase?");
+    return clarify(parsed.clarification_question ?? "סליחה, לא הבנתי — אפשר לנסח את זה מחדש?");
   }
 
   if (parsed.intent === "add") {
     const e = parsed.event;
     if (!e || !e.title || !e.start_date) {
-      return clarify("What's the event, and what date is it on?");
+      return clarify("מה האירוע, ובאיזה תאריך?");
     }
 
     const { error } = await supabase.from("events").insert({
@@ -101,10 +101,10 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       console.error("Insert failed", error);
-      return NextResponse.json({ ok: false, message: "Couldn't save that — try again." }, { status: 500 });
+      return NextResponse.json({ ok: false, message: "לא הצלחתי לשמור — נסה שוב." }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, message: `Added "${e.title}" ✅` });
+    return NextResponse.json({ ok: true, message: `נוסף "${e.title}" ✅` });
   }
 
   if (parsed.intent === "delete" || parsed.intent === "edit") {
@@ -112,30 +112,30 @@ export async function POST(req: NextRequest) {
 
     if (!event) {
       if (candidates.length === 0) {
-        return clarify("I couldn't find an event matching that — which one did you mean?");
+        return clarify("לא מצאתי אירוע מתאים — לאיזה אירוע התכוונת?");
       }
       const options = candidates
         .slice(0, 5)
-        .map((c) => `"${c.event.title}" on ${c.date}`)
+        .map((c) => `"${c.event.title}" בתאריך ${c.date}`)
         .join(", ");
-      return clarify(`I found a few matches: ${options}. Which one did you mean?`);
+      return clarify(`מצאתי כמה התאמות: ${options}. לאיזו התכוונת?`);
     }
 
     if (parsed.intent === "delete") {
       const { error } = await supabase.from("events").delete().eq("id", event.id);
       if (error) {
-        return NextResponse.json({ ok: false, message: "Couldn't delete that — try again." }, { status: 500 });
+        return NextResponse.json({ ok: false, message: "לא הצלחתי למחוק — נסה שוב." }, { status: 500 });
       }
       const note = event.recurrence_frequency
-        ? ` (this cancels the whole recurring series, not just one occurrence)`
+        ? " (זה מבטל את כל סדרת האירועים החוזרים, לא רק מופע אחד)"
         : "";
-      return NextResponse.json({ ok: true, message: `Deleted "${event.title}"${note} ✅` });
+      return NextResponse.json({ ok: true, message: `נמחק "${event.title}"${note} ✅` });
     }
 
     // edit
     const e = parsed.event;
     if (!e) {
-      return clarify(`What should I change about "${event.title}"?`);
+      return clarify(`מה לשנות ב-"${event.title}"?`);
     }
     const update: Partial<EventRecord> = {};
     if (e.title) update.title = e.title;
@@ -154,10 +154,10 @@ export async function POST(req: NextRequest) {
 
     const { error } = await supabase.from("events").update(update).eq("id", event.id);
     if (error) {
-      return NextResponse.json({ ok: false, message: "Couldn't update that — try again." }, { status: 500 });
+      return NextResponse.json({ ok: false, message: "לא הצלחתי לעדכן — נסה שוב." }, { status: 500 });
     }
-    return NextResponse.json({ ok: true, message: `Updated "${event.title}" ✅` });
+    return NextResponse.json({ ok: true, message: `עודכן "${event.title}" ✅` });
   }
 
-  return NextResponse.json({ ok: true, message: "Got it." });
+  return NextResponse.json({ ok: true, message: "בוצע." });
 }

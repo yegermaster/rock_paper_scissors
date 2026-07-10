@@ -19,15 +19,17 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
     byDate.get(occ.date)!.push(occ);
   }
 
-  return (
+  const height = HEADER_HEIGHT + ROWS * MINI_HEIGHT;
+
+  const node = (
     <div
       style={{
         width: WIDTH,
-        height: HEADER_HEIGHT + ROWS * MINI_HEIGHT,
+        height,
         display: "flex",
         flexDirection: "column",
         backgroundColor: "#ffffff",
-        fontFamily: "sans-serif",
+        fontFamily: "Noto Sans Hebrew",
       }}
     >
       <div
@@ -48,7 +50,10 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
         {Array.from({ length: ROWS }, (_, rowIdx) => (
           <div key={rowIdx} style={{ display: "flex", width: WIDTH, height: MINI_HEIGHT }}>
             {Array.from({ length: COLS }, (_, colIdx) => {
-              const monthIdx = rowIdx * COLS + colIdx; // 0-11
+              // Hebrew reads right-to-left: reverse column order so month 1
+              // ends up on the right edge of the first row.
+              const displayColIdx = COLS - 1 - colIdx;
+              const monthIdx = rowIdx * COLS + displayColIdx; // 0-11
               const month1 = monthIdx + 1;
               const totalDays = daysInMonth(year, month1);
               const monthStart = `${year}-${String(month1).padStart(2, "0")}-01`;
@@ -82,7 +87,7 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
                   <div style={{ display: "flex", flexDirection: "column" }}>
                     {miniRows.map((mrow, mri) => (
                       <div key={mri} style={{ display: "flex" }}>
-                        {mrow.map((dayNum, di) => {
+                        {[...mrow].reverse().map((dayNum, di) => {
                           if (dayNum === null) {
                             return <div key={di} style={{ width: dayCellSize, height: dayCellSize, display: "flex" }} />;
                           }
@@ -147,4 +152,6 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
       </div>
     </div>
   );
+
+  return { node, width: WIDTH, height };
 }

@@ -57,8 +57,10 @@ export function daysInMonth(year: number, month1to12: number): number {
   return new Date(Date.UTC(year, month1to12, 0)).getUTCDate();
 }
 
-export const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+// Gregorian weekday/month names, in Hebrew (the Hebrew *calendar* dates are
+// separate — see lib/hebrew-date.ts).
+export const WEEKDAY_LABELS = ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳"];
 export const MONTH_LABELS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני",
+  "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר",
 ];

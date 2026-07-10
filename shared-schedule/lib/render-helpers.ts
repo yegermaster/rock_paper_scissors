@@ -24,9 +24,7 @@ export function displayDuration(occ: Occurrence): number {
 export function minutesToLabel(minutes: number): string {
   const h24 = Math.floor(minutes / 60);
   const m = minutes % 60;
-  const period = h24 >= 12 ? "PM" : "AM";
-  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
-  return m === 0 ? `${h12} ${period}` : `${h12}:${String(m).padStart(2, "0")} ${period}`;
+  return `${String(h24).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
 export function truncate(str: string, max: number): string {

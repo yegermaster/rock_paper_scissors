@@ -54,9 +54,14 @@ const responseSchema = {
 };
 
 const SYSTEM_INSTRUCTIONS = `You turn one chat message into a structured calendar action for a shared
-schedule app used by two people (a couple).
+schedule app used by two people (a couple). The app's UI is entirely in
+Hebrew and messages will usually be written in Hebrew (occasionally English).
 
 Respond ONLY with the JSON described by the schema. Rules:
+
+- clarification_question, when set, MUST be written in Hebrew — the user
+  only reads Hebrew in this app. title/category should stay in whatever
+  language the user wrote them in (usually Hebrew) — don't translate those.
 
 - intent: "add" for a new event, "edit" to change an existing one, "delete"
   to remove one, "view" if the message is just navigation/chit-chat with no
@@ -101,7 +106,7 @@ export async function parseMessage(params: {
 
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
+    model: "gemini-3.1-flash-lite",
     systemInstruction: SYSTEM_INSTRUCTIONS,
     generationConfig: {
       responseMimeType: "application/json",

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { addDays, addMonths, addYears } from "@/lib/dates";
 import type { ViewKind } from "@/lib/types";
 
+const VIEW_LABELS: Record<ViewKind, string> = { week: "שבוע", month: "חודש", year: "שנה" };
+
 function todayYMD(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -49,12 +51,12 @@ export default function Page() {
         setContext(null);
         setImgVersion((v) => v + 1);
       } else {
-        setStatus(data.message ?? "Something went wrong.");
+        setStatus(data.message ?? "משהו השתבש.");
         setPendingQuestion(null);
         setContext(null);
       }
     } catch {
-      setStatus("Couldn't reach the server — try again.");
+      setStatus("לא הצלחתי להתחבר לשרת — נסה שוב.");
     } finally {
       setLoading(false);
     }
@@ -64,6 +66,7 @@ export default function Page() {
 
   return (
     <main
+      dir="rtl"
       style={{
         maxWidth: 1440,
         margin: "0 auto",
@@ -87,30 +90,29 @@ export default function Page() {
                 color: view === v ? "#fff" : "#111827",
                 fontWeight: 600,
                 cursor: "pointer",
-                textTransform: "capitalize",
               }}
             >
-              {v}
+              {VIEW_LABELS[v]}
             </button>
           ))}
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <button onClick={() => setAnchor((a) => shiftAnchor(view, a, -1))} style={navBtnStyle}>
-            ← Prev
+            ← הקודם
           </button>
           <button onClick={() => setAnchor(todayYMD())} style={navBtnStyle}>
-            Today
+            היום
           </button>
           <button onClick={() => setAnchor((a) => shiftAnchor(view, a, 1))} style={navBtnStyle}>
-            Next →
+            הבא →
           </button>
         </div>
       </div>
 
       <div style={{ background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img key={imgSrc} src={imgSrc} alt={`${view} calendar`} style={{ width: "100%", display: "block" }} />
+        <img key={imgSrc} src={imgSrc} alt={`לוח שנה — ${VIEW_LABELS[view]}`} style={{ width: "100%", display: "block" }} />
       </div>
 
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -126,7 +128,7 @@ export default function Page() {
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={pendingQuestion ? "Reply here…" : "e.g. dinner Friday at 7, or dance class every Monday 6pm"}
+            placeholder={pendingQuestion ? "השב כאן…" : "לדוגמה: ארוחת ערב בשישי בשבע, או שיעור ריקוד כל יום שני בשש"}
             style={{
               flex: 1,
               padding: "12px 14px",
@@ -149,7 +151,7 @@ export default function Page() {
               opacity: loading ? 0.6 : 1,
             }}
           >
-            {loading ? "…" : "Send"}
+            {loading ? "…" : "שלח"}
           </button>
         </div>
       </form>
