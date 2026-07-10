@@ -2,13 +2,13 @@ import { dayOfWeek, daysInMonth, MONTH_LABELS } from "../dates";
 import { chipColors } from "../render-helpers";
 import type { Occurrence } from "../types";
 
-const WIDTH = 1400;
-const HEADER_HEIGHT = 60;
+const WIDTH = 1900;
+const HEADER_HEIGHT = 84;
 const COLS = 4;
 const ROWS = 3;
 const MINI_WIDTH = WIDTH / COLS;
-const MINI_HEIGHT = 260;
-const DOT_SIZE = 5;
+const MINI_HEIGHT = 340;
+const DOT_SIZE = 7;
 
 export function renderYearView(yearStart: string, occurrences: Occurrence[], today: string) {
   const year = Number(yearStart.slice(0, 4));
@@ -38,7 +38,7 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: 28,
+          fontSize: 38,
           fontWeight: 700,
           color: "#111827",
         }}
@@ -77,11 +77,11 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
                     height: MINI_HEIGHT,
                     display: "flex",
                     flexDirection: "column",
-                    padding: 8,
+                    padding: 12,
                     border: "1px solid #f1f5f9",
                   }}
                 >
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", display: "flex", marginBottom: 4 }}>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: "#374151", display: "flex", marginBottom: 6 }}>
                     {MONTH_LABELS[monthIdx]}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column" }}>
@@ -110,12 +110,12 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
                             >
                               <div
                                 style={{
-                                  fontSize: 9,
+                                  fontSize: 13,
                                   color: isToday ? "#ffffff" : "#4b5563",
                                   backgroundColor: isToday ? "#4f46e5" : "transparent",
                                   borderRadius: 999,
-                                  width: 14,
-                                  height: 14,
+                                  width: 20,
+                                  height: 20,
                                   display: "flex",
                                   alignItems: "center",
                                   justifyContent: "center",
@@ -123,7 +123,7 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
                               >
                                 {dayNum}
                               </div>
-                              <div style={{ display: "flex", marginTop: 1 }}>
+                              <div style={{ display: "flex", marginTop: 2 }}>
                                 {dotCategories.map((cat) => (
                                   <div
                                     key={cat}

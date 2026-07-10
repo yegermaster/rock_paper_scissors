@@ -3,11 +3,11 @@ import { hebrewDateShort } from "../hebrew-date";
 import { chipColors, displayStartMinutes, truncate } from "../render-helpers";
 import type { Occurrence } from "../types";
 
-const WIDTH = 1400;
-const HEADER_HEIGHT = 60;
-const WEEKDAY_ROW_HEIGHT = 30;
+const WIDTH = 1900;
+const HEADER_HEIGHT = 84;
+const WEEKDAY_ROW_HEIGHT = 42;
 const MAX_CHIPS_PER_CELL = 3;
-const CELL_HEIGHT = 140;
+const CELL_HEIGHT = 190;
 
 // Hebrew reads right-to-left: reverse each week row so Sunday is on the
 // right edge and Saturday on the left.
@@ -63,7 +63,7 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: 28,
+          fontSize: 38,
           fontWeight: 700,
           color: "#111827",
         }}
@@ -80,7 +80,7 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: 12,
+              fontSize: 16,
               color: "#6b7280",
             }}
           >
@@ -123,13 +123,13 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
                     flexDirection: "column",
                     border: "1px solid #f1f5f9",
                     backgroundColor: isToday ? "#eef2ff" : "#ffffff",
-                    padding: 4,
+                    padding: 6,
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
                     <div
                       style={{
-                        fontSize: 13,
+                        fontSize: 18,
                         fontWeight: isToday ? 700 : 400,
                         color: isToday ? "#4f46e5" : "#374151",
                         display: "flex",
@@ -137,11 +137,11 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
                     >
                       {dayNum}
                     </div>
-                    <div style={{ fontSize: 8, color: "#9ca3af", display: "flex" }}>
+                    <div style={{ fontSize: 12, color: "#9ca3af", display: "flex" }}>
                       {hebrewDateShort(cell.date)}
                     </div>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", marginTop: 2 }}>
+                  <div style={{ display: "flex", flexDirection: "column", marginTop: 4 }}>
                     {visible.map((occ) => {
                       const colors = chipColors(occ.event.category);
                       const isSpanContinuation = occ.isMultiDaySpan && occ.date !== occ.spanStart;
@@ -150,13 +150,14 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
                           key={occ.event.id + occ.date}
                           style={{
                             display: "flex",
-                            fontSize: 10,
+                            fontSize: 14,
+                            fontWeight: 600,
                             backgroundColor: colors.bg,
                             color: colors.text,
                             border: `1px solid ${colors.border}`,
-                            borderRadius: 3,
-                            padding: "1px 3px",
-                            marginBottom: 2,
+                            borderRadius: 5,
+                            padding: "3px 6px",
+                            marginBottom: 3,
                             overflow: "hidden",
                           }}
                         >
@@ -165,7 +166,7 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
                       );
                     })}
                     {overflow > 0 && (
-                      <div style={{ display: "flex", fontSize: 10, color: "#9ca3af" }}>
+                      <div style={{ display: "flex", fontSize: 13, color: "#9ca3af" }}>
                         +{overflow} עוד
                       </div>
                     )}

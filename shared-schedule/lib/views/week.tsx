@@ -10,13 +10,13 @@ import {
 } from "../render-helpers";
 import type { Occurrence } from "../types";
 
-const WIDTH = 1400;
-const GUTTER = 60;
+const WIDTH = 1900;
+const GUTTER = 84;
 const DAY_WIDTH = (WIDTH - GUTTER) / 7;
-const HOUR_HEIGHT = 40;
+const HOUR_HEIGHT = 56;
 const GRID_HEIGHT = ((GRID_END_MINUTES - GRID_START_MINUTES) / 60) * HOUR_HEIGHT;
-const HEADER_HEIGHT = 78;
-const SPAN_ROW_HEIGHT = 30;
+const HEADER_HEIGHT = 108;
+const SPAN_ROW_HEIGHT = 42;
 const MAX_SPAN_ROWS = 2;
 
 // Hebrew calendar reads right-to-left: Sunday renders on the right edge
@@ -106,12 +106,12 @@ export function renderWeekView(
                 borderBottom: "2px solid #e5e7eb",
               }}
             >
-              <div style={{ fontSize: 14, color: "#6b7280", display: "flex" }}>
+              <div style={{ fontSize: 19, color: "#6b7280", display: "flex" }}>
                 {WEEKDAY_LABELS[dayOfWeek(d)]}
               </div>
               <div
                 style={{
-                  fontSize: 22,
+                  fontSize: 32,
                   fontWeight: 700,
                   color: isToday ? "#4f46e5" : "#111827",
                   display: "flex",
@@ -119,7 +119,7 @@ export function renderWeekView(
               >
                 {Number(d.slice(-2))}
               </div>
-              <div style={{ fontSize: 10, color: "#9ca3af", display: "flex" }}>
+              <div style={{ fontSize: 15, color: "#9ca3af", display: "flex" }}>
                 {hebrewDateShort(d)}
               </div>
             </div>
@@ -147,16 +147,17 @@ export function renderWeekView(
                   key={span.event.id}
                   style={{
                     position: "absolute",
-                    left: left + 2,
+                    left: left + 3,
                     width,
-                    height: SPAN_ROW_HEIGHT - 6,
+                    height: SPAN_ROW_HEIGHT - 8,
                     backgroundColor: colors.bg,
                     border: `1px solid ${colors.border}`,
-                    borderRadius: 6,
+                    borderRadius: 8,
                     display: "flex",
                     alignItems: "center",
-                    paddingRight: 8,
-                    fontSize: 13,
+                    paddingRight: 12,
+                    fontSize: 17,
+                    fontWeight: 600,
                     color: colors.text,
                   }}
                 >
@@ -195,17 +196,17 @@ export function renderWeekView(
                     style={{
                       position: "absolute",
                       top: block.top,
-                      left: block.colIndex * blockWidth + 1,
-                      width: blockWidth - 2,
-                      height: block.height - 2,
+                      left: block.colIndex * blockWidth + 2,
+                      width: blockWidth - 4,
+                      height: block.height - 3,
                       backgroundColor: colors.bg,
                       border: `1px solid ${colors.border}`,
-                      borderRadius: 4,
+                      borderRadius: 6,
                       display: "flex",
                       flexDirection: "column",
                       overflow: "hidden",
-                      padding: 2,
-                      fontSize: 10,
+                      padding: 4,
+                      fontSize: 14,
                       color: colors.text,
                     }}
                   >
@@ -213,7 +214,7 @@ export function renderWeekView(
                       {truncate(block.occ.event.title, 18)}
                     </div>
                     {block.occ.event.person && (
-                      <div style={{ fontSize: 9, opacity: 0.8, display: "flex" }}>
+                      <div style={{ fontSize: 12, opacity: 0.8, display: "flex" }}>
                         {block.occ.event.person}
                       </div>
                     )}
@@ -234,8 +235,8 @@ export function renderWeekView(
                 display: "flex",
                 alignItems: "flex-start",
                 justifyContent: "flex-start",
-                paddingLeft: 6,
-                fontSize: 10,
+                paddingLeft: 8,
+                fontSize: 14,
                 color: "#9ca3af",
               }}
             >
