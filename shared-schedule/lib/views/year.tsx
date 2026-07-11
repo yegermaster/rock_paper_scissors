@@ -1,16 +1,17 @@
 import { dayOfWeek, daysInMonth, MONTH_LABELS } from "../dates";
 import { he } from "../bidi";
+import { THEME } from "../theme";
+import { categoriesIn, renderLegend, LEGEND_HEIGHT } from "../legend";
 import { chipColors } from "../render-helpers";
 import type { Occurrence } from "../types";
 
 const WIDTH = 1900;
-const HEADER_HEIGHT = 110;
+const HEADER_HEIGHT = 96;
 const COLS = 4;
 const ROWS = 3;
 const MINI_WIDTH = WIDTH / COLS;
 const MINI_HEIGHT = 340;
 const DOT_SIZE = 7;
-const ACCENT = "#4f46e5";
 
 export function renderYearView(yearStart: string, occurrences: Occurrence[], today: string) {
   const year = Number(yearStart.slice(0, 4));
@@ -21,7 +22,9 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
     byDate.get(occ.date)!.push(occ);
   }
 
-  const height = HEADER_HEIGHT + ROWS * MINI_HEIGHT;
+  const categories = categoriesIn(occurrences);
+  const legendHeight = categories.length > 0 ? LEGEND_HEIGHT : 0;
+  const height = HEADER_HEIGHT + ROWS * MINI_HEIGHT + legendHeight;
 
   const node = (
     <div
@@ -30,7 +33,7 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
         height,
         display: "flex",
         flexDirection: "column",
-        backgroundColor: "#ffffff",
+        backgroundColor: THEME.bg,
         fontFamily: "Noto Sans Hebrew",
       }}
     >
@@ -40,10 +43,10 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: 44,
+          fontSize: 38,
           fontWeight: 800,
-          color: "#ffffff",
-          backgroundImage: `linear-gradient(135deg, ${ACCENT}, #7c3aed)`,
+          color: THEME.text,
+          borderBottom: `1px solid ${THEME.border}`,
         }}
       >
         {year}
@@ -81,10 +84,10 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
                     display: "flex",
                     flexDirection: "column",
                     padding: 12,
-                    border: "1px solid #f1f5f9",
+                    border: `1px solid ${THEME.border}`,
                   }}
                 >
-                  <div style={{ fontSize: 20, fontWeight: 800, color: ACCENT, display: "flex", justifyContent: "flex-end", marginBottom: 6 }}>
+                  <div style={{ fontSize: 19, fontWeight: 800, color: THEME.accent, display: "flex", justifyContent: "flex-end", marginBottom: 6 }}>
                     {he(MONTH_LABELS[monthIdx])}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column" }}>
@@ -115,8 +118,8 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
                                 style={{
                                   fontSize: 13,
                                   fontWeight: isToday ? 700 : 500,
-                                  color: isToday ? "#ffffff" : "#4b5563",
-                                  backgroundColor: isToday ? ACCENT : "transparent",
+                                  color: isToday ? "#ffffff" : THEME.textMuted,
+                                  backgroundColor: isToday ? THEME.accent : "transparent",
                                   borderRadius: 999,
                                   width: 20,
                                   height: 20,
@@ -135,7 +138,7 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
                                       width: DOT_SIZE,
                                       height: DOT_SIZE,
                                       borderRadius: 999,
-                                      backgroundColor: chipColors(cat).border,
+                                      backgroundColor: chipColors(cat).bg,
                                       marginLeft: 1,
                                       display: "flex",
                                     }}
@@ -154,6 +157,8 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
           </div>
         ))}
       </div>
+
+      {renderLegend(categories, WIDTH)}
     </div>
   );
 

@@ -7,6 +7,8 @@ import { todayInAppTimezone } from "@/lib/timezone";
 import type { EventRecord } from "@/lib/types";
 
 export const runtime = "nodejs";
+// Run near the Supabase project's region (Seoul) — see calendar-image/route.tsx.
+export const preferredRegion = "icn1";
 
 function toTimeColumn(hhmm: string | null | undefined): string | null {
   if (!hhmm) return null;

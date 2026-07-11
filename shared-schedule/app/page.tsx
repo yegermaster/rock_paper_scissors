@@ -1,10 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { addDays, addMonths, addYears } from "@/lib/dates";
+import { addDays, addMonths, addYears, startOfWeek, MONTH_LABELS } from "@/lib/dates";
 import type { ViewKind } from "@/lib/types";
 
 const VIEW_LABELS: Record<ViewKind, string> = { week: "שבוע", month: "חודש", year: "שנה" };
+
+const THEME = {
+  bg: "#111827",
+  panel: "#161c2c",
+  panelAlt: "#1a2133",
+  border: "rgba(255,255,255,0.09)",
+  text: "#f1f5f9",
+  textMuted: "#94a3b8",
+  textFaint: "#64748b",
+  accent: "#818cf8",
+};
 
 function todayYMD(): string {
   return new Date().toISOString().slice(0, 10);
@@ -14,6 +25,23 @@ function shiftAnchor(view: ViewKind, anchor: string, direction: 1 | -1): string 
   if (view === "week") return addDays(anchor, 7 * direction);
   if (view === "month") return addMonths(anchor, 1 * direction);
   return addYears(anchor, 1 * direction);
+}
+
+function subtitleFor(view: ViewKind, anchor: string): string {
+  if (view === "week") {
+    const start = startOfWeek(anchor);
+    const end = addDays(start, 6);
+    const [, sm, sd] = start.split("-").map(Number);
+    const [, em, ed] = end.split("-").map(Number);
+    return sm === em
+      ? `שבוע של ${sd}–${ed} ${MONTH_LABELS[sm - 1]}`
+      : `שבוע של ${sd} ${MONTH_LABELS[sm - 1]} – ${ed} ${MONTH_LABELS[em - 1]}`;
+  }
+  if (view === "month") {
+    const [y, m] = anchor.split("-").map(Number);
+    return `${MONTH_LABELS[m - 1]} ${y}`;
+  }
+  return anchor.slice(0, 4);
 }
 
 export default function Page() {
@@ -72,28 +100,31 @@ export default function Page() {
       style={{
         maxWidth: 1600,
         margin: "0 auto",
-        padding: "32px 24px 64px",
+        padding: "28px 24px 64px",
         display: "flex",
         flexDirection: "column",
-        gap: 24,
+        gap: 18,
+        minHeight: "100vh",
+        backgroundColor: THEME.bg,
+        color: THEME.text,
       }}
     >
-      <h1 style={{ fontSize: 30, fontWeight: 800, margin: 0, color: "#111827" }}>לוח שנה משותף</h1>
+      <div style={{ fontSize: 16, fontWeight: 500, color: THEME.textMuted }}>לוח שנה משותף</div>
 
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
-        <div style={{ display: "flex", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 14 }}>
+        <div style={{ display: "flex", gap: 8 }}>
           {(["week", "month", "year"] as ViewKind[]).map((v) => (
             <button
               key={v}
               onClick={() => setView(v)}
               style={{
-                padding: "14px 28px",
-                borderRadius: 12,
-                border: "1px solid #d1d5db",
-                background: view === v ? "#4f46e5" : "#fff",
-                color: view === v ? "#fff" : "#111827",
+                padding: "11px 24px",
+                borderRadius: 10,
+                border: `1px solid ${view === v ? THEME.accent : THEME.border}`,
+                background: view === v ? THEME.accent : THEME.panel,
+                color: "#ffffff",
                 fontWeight: 700,
-                fontSize: 18,
+                fontSize: 16,
                 cursor: "pointer",
               }}
             >
@@ -102,7 +133,7 @@ export default function Page() {
           ))}
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <button onClick={() => setAnchor((a) => shiftAnchor(view, a, -1))} style={navBtnStyle}>
             ← הקודם
           </button>
@@ -118,19 +149,21 @@ export default function Page() {
         </div>
       </div>
 
-      <div style={{ background: "#fff", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.12)" }}>
+      <div style={{ fontSize: 14, color: THEME.textFaint }}>{subtitleFor(view, anchor)}</div>
+
+      <div style={{ background: THEME.panel, borderRadius: 14, overflow: "hidden", border: `1px solid ${THEME.border}` }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img key={imgSrc} src={imgSrc} alt={`לוח שנה — ${VIEW_LABELS[view]}`} style={{ width: "100%", display: "block" }} />
       </div>
 
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {pendingQuestion && (
-          <div style={{ background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 10, padding: "14px 18px", color: "#9a3412", fontSize: 17 }}>
+          <div style={{ background: "#3a2a12", border: "1px solid #7c4a12", borderRadius: 10, padding: "14px 18px", color: "#fbbf6b", fontSize: 16 }}>
             {pendingQuestion}
           </div>
         )}
         {status && !pendingQuestion && (
-          <div style={{ color: "#166534", fontSize: 17 }}>{status}</div>
+          <div style={{ color: "#86efac", fontSize: 15 }}>{status}</div>
         )}
         <div style={{ display: "flex", gap: 12 }}>
           <input
@@ -141,23 +174,26 @@ export default function Page() {
             placeholder={pendingQuestion ? "השב כאן…" : "לדוגמה: ארוחת ערב בשישי בשבע, או שיעור ריקוד כל יום שני בשש"}
             style={{
               flex: 1,
-              padding: "18px 20px",
+              padding: "16px 18px",
               borderRadius: 12,
-              border: "1px solid #d1d5db",
-              fontSize: 18,
+              border: `1px solid ${THEME.border}`,
+              background: THEME.panel,
+              color: THEME.text,
+              fontSize: 17,
+              outline: "none",
             }}
           />
           <button
             type="submit"
             disabled={loading}
             style={{
-              padding: "18px 32px",
+              padding: "16px 30px",
               borderRadius: 12,
               border: "none",
-              background: "#4f46e5",
-              color: "#fff",
+              background: THEME.accent,
+              color: "#ffffff",
               fontWeight: 700,
-              fontSize: 18,
+              fontSize: 17,
               cursor: loading ? "default" : "pointer",
               opacity: loading ? 0.6 : 1,
             }}
@@ -171,25 +207,25 @@ export default function Page() {
 }
 
 const navBtnStyle: React.CSSProperties = {
-  padding: "12px 18px",
-  borderRadius: 12,
-  border: "1px solid #d1d5db",
-  background: "#fff",
+  padding: "11px 16px",
+  borderRadius: 10,
+  border: `1px solid ${THEME.border}`,
+  background: THEME.panel,
   cursor: "pointer",
   fontWeight: 600,
-  fontSize: 16,
-  color: "#111827",
+  fontSize: 15,
+  color: THEME.text,
 };
 
 const downloadBtnStyle: React.CSSProperties = {
-  padding: "12px 18px",
-  borderRadius: 12,
-  border: "1px solid #d1d5db",
-  background: "#fff",
+  padding: "11px 16px",
+  borderRadius: 10,
+  border: `1px solid ${THEME.border}`,
+  background: THEME.panel,
   cursor: "pointer",
   fontWeight: 600,
-  fontSize: 16,
-  color: "#111827",
+  fontSize: 15,
+  color: THEME.text,
   textDecoration: "none",
   display: "inline-flex",
   alignItems: "center",

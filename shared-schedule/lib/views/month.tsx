@@ -1,15 +1,16 @@
 import { WEEKDAY_LABELS, dayOfWeek, daysInMonth, MONTH_LABELS } from "../dates";
 import { hebrewDateShort } from "../hebrew-date";
 import { he } from "../bidi";
+import { THEME } from "../theme";
+import { categoriesIn, renderLegend, LEGEND_HEIGHT } from "../legend";
 import { chipColors, displayStartMinutes, truncate } from "../render-helpers";
 import type { Occurrence } from "../types";
 
 const WIDTH = 1900;
-const HEADER_HEIGHT = 110;
-const WEEKDAY_ROW_HEIGHT = 48;
+const HEADER_HEIGHT = 96;
+const WEEKDAY_ROW_HEIGHT = 44;
 const MAX_CHIPS_PER_CELL = 3;
 const CELL_HEIGHT = 190;
-const ACCENT = "#4f46e5";
 
 // Hebrew calendar convention: weeks flow right-to-left — Sunday is the
 // rightmost cell of each row. Reverse each row's physical order.
@@ -46,7 +47,9 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
   const rows: (typeof cells)[] = [];
   for (let i = 0; i < cells.length; i += 7) rows.push(toRtlRow(cells.slice(i, i + 7)));
 
-  const height = HEADER_HEIGHT + WEEKDAY_ROW_HEIGHT + rows.length * CELL_HEIGHT;
+  const categories = categoriesIn(occurrences);
+  const legendHeight = categories.length > 0 ? LEGEND_HEIGHT : 0;
+  const height = HEADER_HEIGHT + WEEKDAY_ROW_HEIGHT + rows.length * CELL_HEIGHT + legendHeight;
 
   const node = (
     <div
@@ -55,7 +58,7 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
         height,
         display: "flex",
         flexDirection: "column",
-        backgroundColor: "#ffffff",
+        backgroundColor: THEME.bg,
         fontFamily: "Noto Sans Hebrew",
       }}
     >
@@ -65,16 +68,16 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: 44,
+          fontSize: 38,
           fontWeight: 800,
-          color: "#ffffff",
-          backgroundImage: `linear-gradient(135deg, ${ACCENT}, #7c3aed)`,
+          color: THEME.text,
+          borderBottom: `1px solid ${THEME.border}`,
         }}
       >
         {he(`${MONTH_LABELS[month - 1]} ${year}`)}
       </div>
 
-      <div style={{ display: "flex", width: WIDTH, height: WEEKDAY_ROW_HEIGHT, backgroundColor: "#f3f4f6" }}>
+      <div style={{ display: "flex", width: WIDTH, height: WEEKDAY_ROW_HEIGHT, backgroundColor: THEME.panelAlt }}>
         {toRtlRow(WEEKDAY_LABELS).map((label, i) => (
           <div
             key={i}
@@ -83,9 +86,9 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: 17,
+              fontSize: 16,
               fontWeight: 700,
-              color: "#4b5563",
+              color: THEME.textMuted,
             }}
           >
             {he(label)}
@@ -105,8 +108,8 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
                       width: cellWidth,
                       height: CELL_HEIGHT,
                       display: "flex",
-                      backgroundColor: "#fafafa",
-                      border: "1px solid #f1f5f9",
+                      backgroundColor: THEME.panelAlt,
+                      border: `1px solid ${THEME.border}`,
                     }}
                   />
                 );
@@ -127,8 +130,8 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
                     height: CELL_HEIGHT,
                     display: "flex",
                     flexDirection: "column",
-                    border: "1px solid #f1f5f9",
-                    backgroundColor: isToday ? "#eef2ff" : isWeekend ? "#f8fafc" : "#ffffff",
+                    border: `1px solid ${THEME.border}`,
+                    backgroundColor: isToday ? THEME.accentSoft : isWeekend ? THEME.weekendTint : "transparent",
                     padding: 8,
                   }}
                 >
@@ -136,13 +139,13 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
                   <div style={{ display: "flex", flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between" }}>
                     <div
                       style={{
-                        fontSize: 20,
+                        fontSize: 19,
                         fontWeight: isToday ? 800 : 500,
-                        color: isToday ? "#ffffff" : "#374151",
+                        color: isToday ? "#ffffff" : THEME.text,
                         display: "flex",
-                        backgroundColor: isToday ? ACCENT : "transparent",
-                        width: 34,
-                        height: 34,
+                        backgroundColor: isToday ? THEME.accent : "transparent",
+                        width: 32,
+                        height: 32,
                         borderRadius: 999,
                         alignItems: "center",
                         justifyContent: "center",
@@ -150,7 +153,7 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
                     >
                       {dayNum}
                     </div>
-                    <div style={{ fontSize: 12, color: "#9ca3af", display: "flex" }}>
+                    <div style={{ fontSize: 12, color: THEME.textFaint, display: "flex" }}>
                       {he(hebrewDateShort(cell.date))}
                     </div>
                   </div>
@@ -181,7 +184,7 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
                       );
                     })}
                     {overflow > 0 && (
-                      <div style={{ display: "flex", justifyContent: "flex-end", fontSize: 13, fontWeight: 600, color: "#9ca3af" }}>
+                      <div style={{ display: "flex", justifyContent: "flex-end", fontSize: 13, fontWeight: 600, color: THEME.textFaint }}>
                         {he(`ועוד ${overflow}`)}
                       </div>
                     )}
@@ -192,6 +195,8 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
           </div>
         ))}
       </div>
+
+      {renderLegend(categories, WIDTH)}
     </div>
   );
 

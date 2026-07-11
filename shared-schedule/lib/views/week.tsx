@@ -1,6 +1,8 @@
 import { WEEKDAY_LABELS, addDays, dayOfWeek } from "../dates";
 import { hebrewDateShort } from "../hebrew-date";
 import { he } from "../bidi";
+import { THEME } from "../theme";
+import { categoriesIn, renderLegend, LEGEND_HEIGHT } from "../legend";
 import {
   GRID_START_MINUTES,
   GRID_END_MINUTES,
@@ -16,15 +18,14 @@ const GUTTER = 84;
 const DAY_WIDTH = (WIDTH - GUTTER) / 7;
 const HOUR_HEIGHT = 56;
 const GRID_HEIGHT = ((GRID_END_MINUTES - GRID_START_MINUTES) / 60) * HOUR_HEIGHT;
-const HEADER_HEIGHT = 120;
+const HEADER_HEIGHT = 108;
 const SPAN_ROW_HEIGHT = 44;
 const MAX_SPAN_ROWS = 2;
-const ACCENT = "#4f46e5";
 
 // Hebrew calendar convention: the week flows right-to-left — Sunday is the
-// RIGHTMOST column (next to the hour gutter on the right edge), Saturday
-// leftmost. `colX` maps a chronological day index (0=Sun..6=Sat) to the
-// physical left-x of its column, for absolutely-positioned span bars.
+// RIGHTMOST column, Saturday leftmost. The hour gutter sits at the LEFT
+// edge. `colX` maps a chronological day index (0=Sun..6=Sat) to the
+// physical left-x of its column (gutter width excluded — added by caller).
 function colX(chronoIndex: number): number {
   return (6 - chronoIndex) * DAY_WIDTH;
 }
@@ -83,7 +84,9 @@ export function renderWeekView(
   const hourMarks: number[] = [];
   for (let m = GRID_START_MINUTES; m <= GRID_END_MINUTES; m += 60) hourMarks.push(m);
 
-  const height = HEADER_HEIGHT + spanAreaHeight + GRID_HEIGHT + 24;
+  const categories = categoriesIn(occurrences);
+  const legendHeight = categories.length > 0 ? LEGEND_HEIGHT : 0;
+  const height = HEADER_HEIGHT + spanAreaHeight + GRID_HEIGHT + legendHeight + 8;
 
   const node = (
     <div
@@ -92,19 +95,20 @@ export function renderWeekView(
         height,
         display: "flex",
         flexDirection: "column",
-        backgroundColor: "#ffffff",
+        backgroundColor: THEME.bg,
         fontFamily: "Noto Sans Hebrew",
       }}
     >
-      {/* Header: day cells Sat..Sun (physical LTR), hour gutter at right edge */}
+      {/* Header: gutter spacer at left edge, then day cells Sat..Sun */}
       <div
         style={{
           display: "flex",
           width: WIDTH,
           height: HEADER_HEIGHT,
-          backgroundImage: `linear-gradient(135deg, ${ACCENT}, #7c3aed)`,
+          borderBottom: `1px solid ${THEME.border}`,
         }}
       >
+        <div style={{ width: GUTTER, display: "flex" }} />
         {displayDays.map((d) => {
           const isToday = d === today;
           return (
@@ -118,36 +122,35 @@ export function renderWeekView(
                 justifyContent: "center",
               }}
             >
-              <div style={{ fontSize: 19, color: "rgba(255,255,255,0.75)", display: "flex" }}>
+              <div style={{ fontSize: 18, color: THEME.textMuted, display: "flex" }}>
                 {he(WEEKDAY_LABELS[dayOfWeek(d)])}
               </div>
               <div
                 style={{
-                  fontSize: 34,
+                  fontSize: 32,
                   fontWeight: 800,
-                  color: "#ffffff",
+                  color: isToday ? "#ffffff" : THEME.text,
                   display: "flex",
-                  backgroundColor: isToday ? "rgba(255,255,255,0.25)" : "transparent",
+                  backgroundColor: isToday ? THEME.accent : "transparent",
                   borderRadius: 999,
-                  width: 56,
-                  height: 56,
+                  width: 52,
+                  height: 52,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
                 {Number(d.slice(-2))}
               </div>
-              <div style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", display: "flex" }}>
+              <div style={{ fontSize: 13, color: THEME.textFaint, display: "flex" }}>
                 {he(hebrewDateShort(d))}
               </div>
             </div>
           );
         })}
-        <div style={{ width: GUTTER, display: "flex" }} />
       </div>
 
       {/* Multi-day span bars */}
-      <div style={{ display: "flex", flexDirection: "column", width: WIDTH, backgroundColor: "#fafaff" }}>
+      <div style={{ display: "flex", flexDirection: "column", width: WIDTH, backgroundColor: THEME.panelAlt }}>
         {visibleSpanRows.map((row, rowIdx) => (
           <div key={rowIdx} style={{ display: "flex", width: WIDTH, height: SPAN_ROW_HEIGHT, position: "relative" }}>
             {row.map((span) => {
@@ -158,7 +161,7 @@ export function renderWeekView(
               );
               const colors = chipColors(span.event.category);
               // RTL grid: the chronologically-later day sits further LEFT.
-              const left = colX(endIdx);
+              const left = GUTTER + colX(endIdx);
               const width = (endIdx - startIdx + 1) * DAY_WIDTH - 4;
               return (
                 <div
@@ -174,7 +177,7 @@ export function renderWeekView(
                     alignItems: "center",
                     justifyContent: "flex-end",
                     paddingRight: 14,
-                    fontSize: 18,
+                    fontSize: 17,
                     fontWeight: 700,
                     color: colors.text,
                   }}
@@ -187,8 +190,28 @@ export function renderWeekView(
         ))}
       </div>
 
-      {/* Time grid: day columns Sat..Sun, hour gutter at right edge */}
+      {/* Time grid: hour gutter at left edge, then day columns Sat..Sun */}
       <div style={{ display: "flex", width: WIDTH, height: GRID_HEIGHT, position: "relative" }}>
+        <div style={{ width: GUTTER, display: "flex", flexDirection: "column", borderRight: `1px solid ${THEME.gridLine}` }}>
+          {hourMarks.map((m) => (
+            <div
+              key={m}
+              style={{
+                height: HOUR_HEIGHT,
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "center",
+                paddingTop: 4,
+                fontSize: 13,
+                fontWeight: 600,
+                color: THEME.textFaint,
+              }}
+            >
+              {minutesToLabel(m)}
+            </div>
+          ))}
+        </div>
+
         {displayDays.map((d) => {
           const laidOut = layoutDayColumn(byDay.get(d) ?? [], HOUR_HEIGHT);
           const isToday = d === today;
@@ -200,8 +223,8 @@ export function renderWeekView(
                 height: GRID_HEIGHT,
                 position: "relative",
                 display: "flex",
-                backgroundColor: isToday ? "#eef2ff" : isWeekend(d) ? "#f8fafc" : "#ffffff",
-                borderLeft: "1px solid #eef2f7",
+                backgroundColor: isToday ? THEME.accentSoft : isWeekend(d) ? THEME.weekendTint : "transparent",
+                borderLeft: `1px solid ${THEME.gridLine}`,
               }}
             >
               {/* Hour gridlines */}
@@ -215,7 +238,7 @@ export function renderWeekView(
                       left: 0,
                       width: DAY_WIDTH,
                       height: 1,
-                      backgroundColor: "#eef2f7",
+                      backgroundColor: THEME.gridLine,
                       display: "flex",
                     }}
                   />
@@ -240,7 +263,7 @@ export function renderWeekView(
                       alignItems: "flex-end",
                       overflow: "hidden",
                       padding: 8,
-                      fontSize: 16,
+                      fontSize: 15,
                       color: colors.text,
                     }}
                   >
@@ -248,7 +271,7 @@ export function renderWeekView(
                       {he(truncate(block.occ.event.title, 18))}
                     </div>
                     {block.occ.event.start_time && (
-                      <div style={{ fontSize: 13, opacity: 0.9, display: "flex" }}>
+                      <div style={{ fontSize: 12, opacity: 0.85, display: "flex" }}>
                         {minutesToLabel(
                           Number(block.occ.event.start_time.slice(0, 2)) * 60 +
                             Number(block.occ.event.start_time.slice(3, 5))
@@ -256,7 +279,7 @@ export function renderWeekView(
                       </div>
                     )}
                     {block.occ.event.person && (
-                      <div style={{ fontSize: 13, opacity: 0.9, display: "flex" }}>
+                      <div style={{ fontSize: 12, opacity: 0.85, display: "flex" }}>
                         {he(block.occ.event.person)}
                       </div>
                     )}
@@ -266,28 +289,9 @@ export function renderWeekView(
             </div>
           );
         })}
-
-        {/* Hour gutter, right edge */}
-        <div style={{ width: GUTTER, display: "flex", flexDirection: "column", borderLeft: "1px solid #eef2f7" }}>
-          {hourMarks.map((m) => (
-            <div
-              key={m}
-              style={{
-                height: HOUR_HEIGHT,
-                display: "flex",
-                alignItems: "flex-start",
-                justifyContent: "center",
-                paddingTop: 4,
-                fontSize: 14,
-                fontWeight: 600,
-                color: "#9ca3af",
-              }}
-            >
-              {minutesToLabel(m)}
-            </div>
-          ))}
-        </div>
       </div>
+
+      {renderLegend(categories, WIDTH)}
     </div>
   );
 
