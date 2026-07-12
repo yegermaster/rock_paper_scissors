@@ -72,6 +72,16 @@ export function toEventPayload(values: EventFormValues) {
 
 const ALL_PEOPLE: Person[] = ["itamar", "hadas", "both"];
 
+const DURATION_PRESETS = [15, 30, 45, 60, 90, 120, 150, 180, 240, 300, 360, 480];
+
+function formatDurationHebrew(minutes: number): string {
+  if (minutes < 60) return `${minutes} דק׳`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  const hoursLabel = h === 1 ? "שעה" : h === 2 ? "שעתיים" : `${h} שעות`;
+  return m === 0 ? hoursLabel : `${hoursLabel} ו-${m} דק׳`;
+}
+
 export default function EventForm({
   initial,
   isEditing,
@@ -145,6 +155,21 @@ export default function EventForm({
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
         <input type="date" value={values.start_date} onChange={(e) => set("start_date", e.target.value)} style={{ ...inputStyle, flex: 1, minWidth: 140 }} />
         <input type="time" value={values.start_time} onChange={(e) => set("start_time", e.target.value)} style={{ ...inputStyle, flex: 1, minWidth: 110 }} />
+        <select
+          dir="rtl"
+          value={values.duration_minutes}
+          onChange={(e) => set("duration_minutes", Number(e.target.value))}
+          style={{ ...inputStyle, flex: 1, minWidth: 130 }}
+        >
+          {(DURATION_PRESETS.includes(values.duration_minutes)
+            ? DURATION_PRESETS
+            : [...DURATION_PRESETS, values.duration_minutes].sort((a, b) => a - b)
+          ).map((m) => (
+            <option key={m} value={m}>
+              {formatDurationHebrew(m)}
+            </option>
+          ))}
+        </select>
         <input dir="rtl" placeholder="קטגוריה (לא חובה)" value={values.category} onChange={(e) => set("category", e.target.value)} style={{ ...inputStyle, flex: 1, minWidth: 140 }} />
       </div>
 
