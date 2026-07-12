@@ -69,5 +69,14 @@ export async function GET(req: NextRequest) {
         ? renderMonthView(start, occurrences, today)
         : renderYearView(start, occurrences, today);
 
-  return new ImageResponse(rendered.node, { width: rendered.width, height: rendered.height, fonts });
+  // next/og's ImageResponse defaults to a 1-year immutable Cache-Control
+  // header (meant for static OG images). This route renders live event
+  // data that changes on every add/edit/delete, so an aggressive cache
+  // would show stale calendars — override it to always revalidate.
+  return new ImageResponse(rendered.node, {
+    width: rendered.width,
+    height: rendered.height,
+    fonts,
+    headers: { "cache-control": "no-store" },
+  });
 }
