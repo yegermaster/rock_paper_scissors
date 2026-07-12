@@ -8,6 +8,8 @@ import {
   GRID_START_MINUTES,
   GRID_END_MINUTES,
   computeOverlapKeys,
+  displayDuration,
+  displayStartMinutes,
   layoutDayColumn,
   minutesToLabel,
   occurrenceKey,
@@ -83,8 +85,10 @@ export function renderWeekView(
   const visibleSpanRows = spanRows.slice(0, MAX_SPAN_ROWS);
   const spanAreaHeight = visibleSpanRows.length * SPAN_ROW_HEIGHT;
 
+  // Exclusive of GRID_END_MINUTES: one mark per row, matching GRID_HEIGHT
+  // exactly (an inclusive loop here would add a phantom extra label row).
   const hourMarks: number[] = [];
-  for (let m = GRID_START_MINUTES; m <= GRID_END_MINUTES; m += 60) hourMarks.push(m);
+  for (let m = GRID_START_MINUTES; m < GRID_END_MINUTES; m += 60) hourMarks.push(m);
 
   const height = HEADER_HEIGHT + spanAreaHeight + GRID_HEIGHT + LEGEND_HEIGHT + 8;
 
@@ -251,6 +255,12 @@ export function renderWeekView(
                 const fill = personFill(normalizePerson(block.occ.event.person));
                 const isOverlap = overlapKeys.has(occurrenceKey(block.occ));
                 const blockWidth = DAY_WIDTH / block.numCols;
+                // A block whose duration runs past midnight gets clamped to
+                // the day's bottom edge (occurrences are per-calendar-day) —
+                // flag it so the block reads as "continues" rather than
+                // looking like it simply ends there.
+                const spillsPastMidnight =
+                  displayStartMinutes(block.occ) + displayDuration(block.occ) > GRID_END_MINUTES;
                 return (
                   <div
                     key={block.occ.event.id}
@@ -284,6 +294,9 @@ export function renderWeekView(
                             Number(block.occ.event.start_time.slice(3, 5))
                         )}
                       </div>
+                    )}
+                    {spillsPastMidnight && (
+                      <div style={{ fontSize: 11, opacity: 0.85, display: "flex" }}>{he("⋯ נמשך אחרי חצות")}</div>
                     )}
                   </div>
                 );

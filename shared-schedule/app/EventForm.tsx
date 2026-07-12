@@ -16,7 +16,9 @@ export type EventFormValues = {
   recurring: boolean;
   frequency: "daily" | "weekly" | "monthly";
   interval: number;
-  end_date: string; // "" = none
+  end_date: string; // "" = none (recurrence end date)
+  multiDay: boolean;
+  spanEndDate: string; // "" = same as start_date (single-day event)
 };
 
 export function emptyFormValues(defaultDate: string): EventFormValues {
@@ -31,6 +33,8 @@ export function emptyFormValues(defaultDate: string): EventFormValues {
     frequency: "weekly",
     interval: 1,
     end_date: "",
+    multiDay: false,
+    spanEndDate: "",
   };
 }
 
@@ -46,17 +50,20 @@ export function formValuesFromItem(item: EventListItem): EventFormValues {
     frequency: item.recurrenceFrequency || "weekly",
     interval: item.recurrenceInterval || 1,
     end_date: item.recurrenceEndDate || "",
+    multiDay: item.isMultiDaySpan,
+    spanEndDate: item.isMultiDaySpan ? item.spanEnd : "",
   };
 }
 
 /** Payload shape the /api/events endpoints expect. */
 export function toEventPayload(values: EventFormValues) {
+  const spanEnd = values.multiDay && values.spanEndDate ? values.spanEndDate : values.start_date;
   return {
     title: values.title,
     category: values.category || null,
     person: values.person,
     start_date: values.start_date,
-    end_date: values.start_date,
+    end_date: spanEnd,
     start_time: values.start_time || null,
     duration_minutes: values.duration_minutes,
     recurrence: values.recurring
@@ -72,10 +79,13 @@ export function toEventPayload(values: EventFormValues) {
 
 const ALL_PEOPLE: Person[] = ["itamar", "hadas", "both"];
 
-const DURATION_PRESETS = [15, 30, 45, 60, 90, 120, 150, 180, 240, 300, 360, 480];
+const DURATION_PRESETS = [
+  15, 30, 45, 60, 90, 120, 150, 180, 240, 300, 360, 480, 600, 720, 900, 1080, 1440,
+];
 
 function formatDurationHebrew(minutes: number): string {
   if (minutes < 60) return `${minutes} דק׳`;
+  if (minutes === 1440) return "יממה";
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   const hoursLabel = h === 1 ? "שעה" : h === 2 ? "שעתיים" : `${h} שעות`;
@@ -99,7 +109,11 @@ export default function EventForm({
   const set = <K extends keyof EventFormValues>(key: K, val: EventFormValues[K]) =>
     setValues((v) => ({ ...v, [key]: val }));
 
-  const canSave = values.title.trim().length > 0 && values.start_date.length > 0 && !saving;
+  const canSave =
+    values.title.trim().length > 0 &&
+    values.start_date.length > 0 &&
+    (!values.multiDay || (values.spanEndDate.length > 0 && values.spanEndDate >= values.start_date)) &&
+    !saving;
 
   return (
     <div
@@ -174,7 +188,14 @@ export default function EventForm({
       </div>
 
       <label style={{ display: "flex", alignItems: "center", gap: 8, color: THEME.textMuted, fontSize: 14, cursor: "pointer" }}>
-        <input type="checkbox" checked={values.recurring} onChange={(e) => set("recurring", e.target.checked)} />
+        <input
+          type="checkbox"
+          checked={values.recurring}
+          onChange={(e) => {
+            const checked = e.target.checked;
+            setValues((v) => ({ ...v, recurring: checked, multiDay: checked ? false : v.multiDay }));
+          }}
+        />
         אירוע חוזר
       </label>
 
@@ -187,6 +208,34 @@ export default function EventForm({
           </select>
           <input type="date" value={values.end_date} onChange={(e) => set("end_date", e.target.value)} style={inputStyle} title="תאריך סיום (לא חובה)" />
         </div>
+      )}
+
+      <label style={{ display: "flex", alignItems: "center", gap: 8, color: THEME.textMuted, fontSize: 14, cursor: "pointer" }}>
+        <input
+          type="checkbox"
+          checked={values.multiDay}
+          onChange={(e) => {
+            const checked = e.target.checked;
+            setValues((v) => ({
+              ...v,
+              multiDay: checked,
+              recurring: checked ? false : v.recurring,
+              spanEndDate: checked && !v.spanEndDate ? v.start_date : v.spanEndDate,
+            }));
+          }}
+        />
+        אירוע רב-ימים (לדוגמה סוף שבוע או חופשה)
+      </label>
+
+      {values.multiDay && (
+        <input
+          type="date"
+          value={values.spanEndDate}
+          min={values.start_date}
+          onChange={(e) => set("spanEndDate", e.target.value)}
+          style={{ ...inputStyle, maxWidth: 200 }}
+          title="עד תאריך"
+        />
       )}
 
       <div style={{ display: "flex", gap: 10 }}>

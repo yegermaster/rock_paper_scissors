@@ -102,7 +102,16 @@ Respond ONLY with the JSON described by the schema. Rules:
   it applies, per the rule above) — do NOT ask a clarifying question just
   because a recurring event lacks an explicit starting date.
 - end_date on the event should equal start_date unless the message clearly
-  describes a multi-day span ("Thu through Sun", "next week").
+  describes a multi-day span ("Thu through Sun", "next week", "the whole
+  weekend at a hotel") — spans can run many days, there's no upper limit.
+- duration_minutes: infer from the message when possible (e.g. "from 9 to
+  17" → 480, "for two hours" → 120, "a 12-hour shift" → 720). If the
+  message gives an explicit end time earlier in the clock than start_time
+  ("night shift 23:00 to 07:00"), that means it crosses midnight — compute
+  duration_minutes as the full elapsed time (23:00→07:00 is 480 minutes),
+  don't just subtract the raw hours. If nothing suggests a duration, leave
+  it null (the app defaults untimed items and default-length events
+  sensibly) rather than guessing a random length.
 - For "edit"/"delete", fill 'target' with your best guess at which existing
   event the user means (date_hint + a short title_hint), so the server can
   look it up. Leave 'event' null unless the user also specified new values

@@ -6,8 +6,10 @@ export const DEFAULT_UNTIMED_MINUTES = 22 * 60 + 30; // 22:30
 export const DEFAULT_UNTIMED_DURATION = 30;
 export const DEFAULT_EVENT_DURATION = 60; // events with a start but no stated end
 
-export const GRID_START_MINUTES = 6 * 60; // 6:00
-export const GRID_END_MINUTES = 23 * 60; // 23:00
+// Full 24h so night shifts / late activity (23:00-07:00) are visible —
+// previously clipped to a 6:00-23:00 "daytime" window.
+export const GRID_START_MINUTES = 0; // 00:00
+export const GRID_END_MINUTES = 24 * 60; // 24:00 (midnight, end of day)
 
 export function displayStartMinutes(occ: Occurrence): number {
   if (!occ.event.start_time) return DEFAULT_UNTIMED_MINUTES;
