@@ -1,21 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { addDays, addMonths, addYears, startOfWeek, MONTH_LABELS } from "@/lib/dates";
-import type { ViewKind } from "@/lib/types";
+import { THEME } from "@/lib/theme";
+import type { ViewKind, EventListItem, PendingAction } from "@/lib/types";
+import EventForm, { emptyFormValues, formValuesFromItem, toEventPayload, type EventFormValues } from "./EventForm";
+import EventList from "./EventList";
 
 const VIEW_LABELS: Record<ViewKind, string> = { week: "שבוע", month: "חודש", year: "שנה" };
-
-const THEME = {
-  bg: "#111827",
-  panel: "#161c2c",
-  panelAlt: "#1a2133",
-  border: "rgba(255,255,255,0.09)",
-  text: "#f1f5f9",
-  textMuted: "#94a3b8",
-  textFaint: "#64748b",
-  accent: "#818cf8",
-};
 
 function todayYMD(): string {
   return new Date().toISOString().slice(0, 10);
@@ -50,9 +42,35 @@ export default function Page() {
   const [input, setInput] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
+  const [pendingConfirmation, setPendingConfirmation] = useState<string | null>(null);
   const [context, setContext] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [loading, setLoading] = useState(false);
   const [imgVersion, setImgVersion] = useState(0);
+
+  const [events, setEvents] = useState<EventListItem[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
+  const [formMode, setFormMode] = useState<"closed" | "add" | "edit">("closed");
+  const [editingItem, setEditingItem] = useState<EventListItem | null>(null);
+  const [savingForm, setSavingForm] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setEventsLoading(true);
+    fetch(`/api/events?view=${view}&date=${anchor}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled) setEvents(data.items || []);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setEventsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [view, anchor, imgVersion]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -65,22 +83,34 @@ export default function Page() {
       const res = await fetch("/api/message", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, context }),
+        body: JSON.stringify({ text, context, pendingAction, view, anchor }),
       });
       const data = await res.json();
 
-      if (data.needsClarification) {
+      if (data.needsConfirmation) {
+        setPendingConfirmation(data.message);
+        setPendingAction(data.pendingAction ?? null);
+        setPendingQuestion(null);
+        setContext(null);
+        setStatus(null);
+      } else if (data.needsClarification) {
         setPendingQuestion(data.message);
         setContext(data.context ?? null);
+        setPendingConfirmation(null);
+        setPendingAction(null);
         setStatus(null);
       } else if (data.ok) {
         setStatus(data.message);
         setPendingQuestion(null);
+        setPendingConfirmation(null);
+        setPendingAction(null);
         setContext(null);
-        setImgVersion((v) => v + 1);
+        if (data.changed) setImgVersion((v) => v + 1);
       } else {
         setStatus(data.message ?? "משהו השתבש.");
         setPendingQuestion(null);
+        setPendingConfirmation(null);
+        setPendingAction(null);
         setContext(null);
       }
     } catch {
@@ -90,8 +120,59 @@ export default function Page() {
     }
   }
 
+  async function handleFormSave(values: EventFormValues) {
+    setSavingForm(true);
+    try {
+      const url = editingItem ? `/api/events/${editingItem.id}` : "/api/events";
+      const method = editingItem ? "PATCH" : "POST";
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(toEventPayload(values)),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setStatus(data.error || "לא הצלחתי לשמור.");
+        return;
+      }
+      setFormMode("closed");
+      setEditingItem(null);
+      setStatus(editingItem ? "האירוע עודכן ✅" : "האירוע נוסף ✅");
+      setImgVersion((v) => v + 1);
+    } catch {
+      setStatus("שגיאת רשת — נסה שוב.");
+    } finally {
+      setSavingForm(false);
+    }
+  }
+
+  async function handleDelete(item: EventListItem) {
+    const warning = item.isRecurring
+      ? "זהו אירוע חוזר — מחיקה תבטל את כל הסדרה, לא רק את המופע הזה. למחוק בכל זאת?"
+      : "למחוק את האירוע?";
+    if (!confirm(warning)) return;
+
+    setDeletingId(item.id);
+    try {
+      const res = await fetch(`/api/events/${item.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) {
+        setStatus(data.error || "לא הצלחתי למחוק.");
+        return;
+      }
+      setStatus("האירוע נמחק ✅");
+      setImgVersion((v) => v + 1);
+    } catch {
+      setStatus("שגיאת רשת — נסה שוב.");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   const imgSrc = `/api/calendar-image?view=${view}&date=${anchor}&v=${imgVersion}`;
   const downloadName = `לוח-שנה-${VIEW_LABELS[view]}-${anchor}.png`;
+  const banner = pendingConfirmation ?? pendingQuestion;
+  const placeholder = pendingConfirmation ? "כן / לא, או תקן פרטים…" : pendingQuestion ? "השב כאן…" : "לדוגמה: ארוחת ערב בשישי בשבע, או שיעור ריקוד כל יום שני בשש";
 
   return (
     <main
@@ -157,21 +238,29 @@ export default function Page() {
       </div>
 
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {pendingQuestion && (
-          <div style={{ background: "#3a2a12", border: "1px solid #7c4a12", borderRadius: 10, padding: "14px 18px", color: "#fbbf6b", fontSize: 16 }}>
-            {pendingQuestion}
+        {banner && (
+          <div
+            style={{
+              background: pendingConfirmation ? "#1e2340" : "#3a2a12",
+              border: `1px solid ${pendingConfirmation ? THEME.accent : "#7c4a12"}`,
+              borderRadius: 10,
+              padding: "14px 18px",
+              color: pendingConfirmation ? "#c7d2fe" : "#fbbf6b",
+              fontSize: 16,
+              whiteSpace: "pre-line",
+            }}
+          >
+            {banner}
           </div>
         )}
-        {status && !pendingQuestion && (
-          <div style={{ color: "#86efac", fontSize: 15 }}>{status}</div>
-        )}
+        {status && !banner && <div style={{ color: "#86efac", fontSize: 15 }}>{status}</div>}
         <div style={{ display: "flex", gap: 12 }}>
           <input
             dir="rtl"
             lang="he"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={pendingQuestion ? "השב כאן…" : "לדוגמה: ארוחת ערב בשישי בשבע, או שיעור ריקוד כל יום שני בשש"}
+            placeholder={placeholder}
             style={{
               flex: 1,
               padding: "16px 18px",
@@ -202,6 +291,47 @@ export default function Page() {
           </button>
         </div>
       </form>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: THEME.text }}>אירועים בטווח הזה</div>
+          {formMode === "closed" && (
+            <button
+              onClick={() => {
+                setEditingItem(null);
+                setFormMode("add");
+              }}
+              style={addBtnStyle}
+            >
+              + הוספה ידנית
+            </button>
+          )}
+        </div>
+
+        {formMode !== "closed" && (
+          <EventForm
+            initial={editingItem ? formValuesFromItem(editingItem) : emptyFormValues(anchor)}
+            isEditing={formMode === "edit"}
+            saving={savingForm}
+            onCancel={() => {
+              setFormMode("closed");
+              setEditingItem(null);
+            }}
+            onSave={handleFormSave}
+          />
+        )}
+
+        <EventList
+          items={events}
+          loading={eventsLoading}
+          deletingId={deletingId}
+          onEdit={(item) => {
+            setEditingItem(item);
+            setFormMode("edit");
+          }}
+          onDelete={handleDelete}
+        />
+      </div>
     </main>
   );
 }
@@ -229,4 +359,15 @@ const downloadBtnStyle: React.CSSProperties = {
   textDecoration: "none",
   display: "inline-flex",
   alignItems: "center",
+};
+
+const addBtnStyle: React.CSSProperties = {
+  padding: "9px 18px",
+  borderRadius: 10,
+  border: `1px solid ${THEME.accent}`,
+  background: "transparent",
+  color: THEME.accent,
+  cursor: "pointer",
+  fontWeight: 700,
+  fontSize: 14,
 };

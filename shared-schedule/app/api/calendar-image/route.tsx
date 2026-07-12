@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { expandOccurrences } from "@/lib/recurrence";
-import { addDays, daysInMonth, startOfMonth, startOfWeek, startOfYear } from "@/lib/dates";
+import { rangeFor } from "@/lib/view-range";
 import { todayInAppTimezone } from "@/lib/timezone";
 import { renderWeekView } from "@/lib/views/week";
 import { renderMonthView } from "@/lib/views/month";
@@ -39,21 +39,6 @@ async function loadHebrewFontsUncached() {
 function loadHebrewFonts() {
   if (!fontsPromise) fontsPromise = loadHebrewFontsUncached();
   return fontsPromise;
-}
-
-function rangeFor(view: ViewKind, anchor: string): { start: string; end: string } {
-  if (view === "week") {
-    const start = startOfWeek(anchor);
-    return { start, end: addDays(start, 6) };
-  }
-  if (view === "month") {
-    const start = startOfMonth(anchor);
-    const [y, m] = start.split("-").map(Number);
-    return { start, end: `${y}-${String(m).padStart(2, "0")}-${daysInMonth(y, m)}` };
-  }
-  const start = startOfYear(anchor);
-  const y = Number(start.slice(0, 4));
-  return { start, end: `${y}-12-31` };
 }
 
 export async function GET(req: NextRequest) {

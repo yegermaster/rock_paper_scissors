@@ -1,46 +1,37 @@
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
-import type { ParsedIntent } from "./types";
+import type { ParsedIntent, ParsedEventFields, RevisedAction } from "./types";
+
+const eventSchema = {
+  type: SchemaType.OBJECT,
+  nullable: true,
+  properties: {
+    title: { type: SchemaType.STRING, nullable: true },
+    category: { type: SchemaType.STRING, nullable: true },
+    person: { type: SchemaType.STRING, nullable: true },
+    start_date: { type: SchemaType.STRING, nullable: true },
+    end_date: { type: SchemaType.STRING, nullable: true },
+    start_time: { type: SchemaType.STRING, nullable: true },
+    duration_minutes: { type: SchemaType.NUMBER, nullable: true },
+    recurrence: {
+      type: SchemaType.OBJECT,
+      nullable: true,
+      properties: {
+        frequency: { type: SchemaType.STRING, nullable: true, enum: ["daily", "weekly", "monthly"] },
+        interval: { type: SchemaType.NUMBER, nullable: true },
+        days_of_week: { type: SchemaType.ARRAY, nullable: true, items: { type: SchemaType.NUMBER } },
+        end_date: { type: SchemaType.STRING, nullable: true },
+      },
+    },
+  },
+};
 
 const responseSchema = {
   type: SchemaType.OBJECT,
   properties: {
-    intent: {
-      type: SchemaType.STRING,
-      enum: ["add", "edit", "delete", "view", "unknown"],
-    },
+    intent: { type: SchemaType.STRING, enum: ["add", "edit", "delete", "view", "unknown"] },
     needs_clarification: { type: SchemaType.BOOLEAN },
     clarification_question: { type: SchemaType.STRING, nullable: true },
-    event: {
-      type: SchemaType.OBJECT,
-      nullable: true,
-      properties: {
-        title: { type: SchemaType.STRING, nullable: true },
-        category: { type: SchemaType.STRING, nullable: true },
-        person: { type: SchemaType.STRING, nullable: true },
-        start_date: { type: SchemaType.STRING, nullable: true },
-        end_date: { type: SchemaType.STRING, nullable: true },
-        start_time: { type: SchemaType.STRING, nullable: true },
-        duration_minutes: { type: SchemaType.NUMBER, nullable: true },
-        recurrence: {
-          type: SchemaType.OBJECT,
-          nullable: true,
-          properties: {
-            frequency: {
-              type: SchemaType.STRING,
-              nullable: true,
-              enum: ["daily", "weekly", "monthly"],
-            },
-            interval: { type: SchemaType.NUMBER, nullable: true },
-            days_of_week: {
-              type: SchemaType.ARRAY,
-              nullable: true,
-              items: { type: SchemaType.NUMBER },
-            },
-            end_date: { type: SchemaType.STRING, nullable: true },
-          },
-        },
-      },
-    },
+    event: eventSchema,
     target: {
       type: SchemaType.OBJECT,
       nullable: true,
@@ -69,9 +60,20 @@ Respond ONLY with the JSON described by the schema. Rules:
 - If required info is missing or ambiguous for an add/edit/delete (e.g. no
   date can be inferred at all), set needs_clarification=true and write ONE
   short, specific follow-up question in clarification_question. Otherwise
-  needs_clarification=false and clarification_question=null.
+  needs_clarification=false and clarification_question=null. (Don't worry
+  about being extra-cautious here — every parsed action is shown back to
+  the user for explicit confirmation before anything is saved, so only ask
+  when you truly cannot proceed at all.)
 - Dates are always "YYYY-MM-DD", using the CURRENT DATE given below to
   resolve relative terms ("tomorrow", "next Tuesday", "this Friday").
+- You may also be given VIEWING — the date range currently shown on the
+  user's screen (e.g. "month of August 2026"). If the message gives a bare
+  weekday or day-of-month with no other anchor ("add dinner on the 5th",
+  "add something for Friday") and that date exists within or very near
+  VIEWING, prefer the occurrence inside VIEWING over the nearest one from
+  CURRENT DATE — the user is almost certainly talking about what they're
+  looking at. Explicit relative terms anchored to today ("tomorrow", "in
+  two weeks") still resolve from CURRENT DATE regardless of VIEWING.
 - start_time is 24h "HH:MM" or null if the message gives no specific time
   (e.g. a bare to-do like "buy anniversary gift" has no time).
 - category is a short free-text label you infer from the message (e.g.
@@ -82,7 +84,14 @@ Respond ONLY with the JSON described by the schema. Rules:
 - recurrence: only set frequency/interval/days_of_week/end_date when the
   message clearly describes a repeating event ("every Monday", "every other
   week", "each weekday"). days_of_week uses 0=Sunday..6=Saturday. Leave the
-  whole recurrence object null for one-off events.
+  whole recurrence object null for one-off events — don't guess it's
+  recurring from a vague hint.
+- start_date is still REQUIRED for a recurring event even when the message
+  gives no explicit first occurrence ("dance class every Monday at 6pm" has
+  no date at all). In that case, infer start_date yourself as the next
+  upcoming occurrence of that weekday from CURRENT DATE (or from VIEWING if
+  it applies, per the rule above) — do NOT ask a clarifying question just
+  because a recurring event lacks an explicit starting date.
 - end_date on the event should equal start_date unless the message clearly
   describes a multi-day span ("Thu through Sun", "next week").
 - For "edit"/"delete", fill 'target' with your best guess at which existing
@@ -96,41 +105,95 @@ Respond ONLY with the JSON described by the schema. Rules:
   Combine the transcript with the new reply to finalize a single event;
   don't lose details already given earlier in the transcript.`;
 
+function getModel(systemInstruction: string, schema: object) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("Missing GEMINI_API_KEY env var.");
+  const genAI = new GoogleGenerativeAI(apiKey);
+  return genAI.getGenerativeModel({
+    model: "gemini-3.1-flash-lite",
+    systemInstruction,
+    generationConfig: {
+      responseMimeType: "application/json",
+      responseSchema: schema as any,
+    },
+  });
+}
+
 export async function parseMessage(params: {
   text: string;
   currentDate: string; // YYYY-MM-DD, in the app's fixed timezone
   context?: string | null; // prior turns of an in-progress clarification exchange
+  viewContext?: string | null; // human-readable description of what's on screen
 }): Promise<ParsedIntent> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("Missing GEMINI_API_KEY env var.");
-
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({
-    model: "gemini-3.1-flash-lite",
-    systemInstruction: SYSTEM_INSTRUCTIONS,
-    generationConfig: {
-      responseMimeType: "application/json",
-      responseSchema: responseSchema as any,
-    },
-  });
+  const model = getModel(SYSTEM_INSTRUCTIONS, responseSchema);
 
   const messageBody = params.context
     ? `Conversation so far:\n${params.context}\n\nNew reply: "${params.text}"`
     : `MESSAGE: "${params.text}"`;
 
+  const viewingLine = params.viewContext ? `\nVIEWING: ${params.viewContext}` : "";
+
   const result = await model.generateContent(
-    `CURRENT DATE: ${params.currentDate}\n\n${messageBody}`
+    `CURRENT DATE: ${params.currentDate}${viewingLine}\n\n${messageBody}`
   );
 
   const raw = result.response.text();
   const parsed = JSON.parse(raw) as ParsedIntent;
 
-  // Defensive defaults in case the model omits optional fields.
   return {
     intent: parsed.intent ?? "unknown",
     needs_clarification: parsed.needs_clarification ?? false,
     clarification_question: parsed.clarification_question ?? null,
     event: parsed.event ?? null,
     target: parsed.target ?? null,
+  };
+}
+
+const REVISE_SCHEMA = {
+  type: SchemaType.OBJECT,
+  properties: {
+    confirmed: { type: SchemaType.BOOLEAN },
+    cancelled: { type: SchemaType.BOOLEAN },
+    updated_event: eventSchema,
+  },
+  required: ["confirmed", "cancelled"],
+};
+
+const REVISE_INSTRUCTIONS = `You are handling a reply to a pending calendar-event confirmation. The
+app already showed the user a summary of an event (given below as PENDING
+EVENT) and asked "confirm?". Now interpret their reply:
+
+- If they're plainly agreeing ("כן", "מאשר", "בטח", "yes", "מעולה", "סבבה")
+  → confirmed=true, cancelled=false, updated_event=null.
+- If they're plainly declining the whole thing ("לא", "בטל", "עזוב",
+  "no", "תשכח מזה") → confirmed=false, cancelled=true, updated_event=null.
+- If they're correcting or adding a detail instead of a plain yes/no
+  ("לא, תזיז לשמונה", "זה כל שבוע לא חד פעמי", "שיהיה ביום שלישי") →
+  confirmed=false, cancelled=false, and updated_event = a COMPLETE event
+  object: copy every field from PENDING EVENT unchanged except the ones the
+  reply corrects. Never drop fields the user didn't mention.
+- Dates in updated_event follow the same "YYYY-MM-DD" / CURRENT DATE rules
+  as normal parsing.
+
+Respond ONLY with the JSON per schema.`;
+
+export async function reviseAction(params: {
+  pendingEvent: ParsedEventFields | null;
+  text: string;
+  currentDate: string;
+}): Promise<RevisedAction> {
+  const model = getModel(REVISE_INSTRUCTIONS, REVISE_SCHEMA);
+
+  const result = await model.generateContent(
+    `CURRENT DATE: ${params.currentDate}\n\nPENDING EVENT: ${JSON.stringify(params.pendingEvent)}\n\nUSER REPLY: "${params.text}"`
+  );
+
+  const raw = result.response.text();
+  const parsed = JSON.parse(raw) as { confirmed?: boolean; cancelled?: boolean; updated_event?: ParsedEventFields | null };
+
+  return {
+    confirmed: parsed.confirmed ?? false,
+    cancelled: parsed.cancelled ?? false,
+    updatedEvent: parsed.updated_event ?? null,
   };
 }

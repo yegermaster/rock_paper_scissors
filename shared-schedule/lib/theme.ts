@@ -1,7 +1,8 @@
 // Shared dark palette for the rendered calendar images.
 export const THEME = {
   bg: "#111827",
-  panelAlt: "#161c2c",
+  panel: "#161c2c",
+  panelAlt: "#1a2133",
   border: "rgba(255,255,255,0.08)",
   gridLine: "rgba(255,255,255,0.07)",
   text: "#f1f5f9",
