@@ -1,3 +1,4 @@
+import { he } from "./bidi";
 import { PEOPLE_LABELS, personFill, type Person } from "./people";
 import { THEME } from "./theme";
 
@@ -28,11 +29,12 @@ export function renderPeopleLegend(width: number) {
                 borderRadius: 999,
                 marginLeft: 8,
                 display: "flex",
-                ...(fill.backgroundColor ? { backgroundColor: fill.backgroundColor } : { backgroundImage: fill.backgroundImage }),
+                backgroundColor: fill.backgroundColor,
+                backgroundImage: fill.backgroundImage,
               }}
             />
             <div style={{ fontSize: 14, fontWeight: 600, color: THEME.textMuted, display: "flex" }}>
-              {PEOPLE_LABELS[person]}
+              {he(PEOPLE_LABELS[person])}
             </div>
           </div>
         );

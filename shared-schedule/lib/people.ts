@@ -19,17 +19,24 @@ export function normalizePerson(value: string | null | undefined): Person {
   return "both";
 }
 
+// Always returns both keys (never `undefined` for one) — Satori's style
+// parser crashes on a style object containing an explicit `undefined`
+// value (e.g. `{ backgroundColor: undefined }`), which is exactly what
+// spreading a conditional field into JSX style props produces.
 export function personFill(person: Person): {
-  backgroundColor?: string;
-  backgroundImage?: string;
+  backgroundColor: string;
+  backgroundImage: string;
   border: string;
   text: string;
 } {
-  if (person === "itamar") return { backgroundColor: BLUE, border: BLUE_DARK, text: "#ffffff" };
-  if (person === "hadas") return { backgroundColor: PINK, border: PINK_DARK, text: "#ffffff" };
+  if (person === "itamar")
+    return { backgroundColor: BLUE, backgroundImage: `linear-gradient(${BLUE}, ${BLUE})`, border: BLUE_DARK, text: "#ffffff" };
+  if (person === "hadas")
+    return { backgroundColor: PINK, backgroundImage: `linear-gradient(${PINK}, ${PINK})`, border: PINK_DARK, text: "#ffffff" };
   // "both" — a diagonal blue/pink split reads as "together" without
   // needing an arbitrary third color.
   return {
+    backgroundColor: BLUE,
     backgroundImage: `linear-gradient(135deg, ${BLUE} 50%, ${PINK} 50%)`,
     border: "#a855f7",
     text: "#ffffff",
