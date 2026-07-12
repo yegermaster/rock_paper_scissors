@@ -4,14 +4,18 @@ import { he } from "../bidi";
 import { THEME } from "../theme";
 import { renderPeopleLegend, LEGEND_HEIGHT } from "../legend";
 import { normalizePerson, personFill } from "../people";
+import { categoryAccentColor } from "../category-color";
 import { computeOverlapKeys, displayStartMinutes, occurrenceKey, truncate } from "../render-helpers";
 import type { Occurrence } from "../types";
 
+// Matches the calm-yellow overlap notice used in the week view.
+const OVERLAP_YELLOW = "#fde047";
+
 const WIDTH = 1900;
 const HEADER_HEIGHT = 96;
-const WEEKDAY_ROW_HEIGHT = 44;
+const WEEKDAY_ROW_HEIGHT = 50;
 const MAX_CHIPS_PER_CELL = 3;
-const CELL_HEIGHT = 190;
+const CELL_HEIGHT = 220;
 
 // Hebrew calendar convention: weeks flow right-to-left — Sunday is the
 // rightmost cell of each row. Reverse each row's physical order.
@@ -85,7 +89,7 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: 16,
+              fontSize: 18,
               fontWeight: 700,
               color: THEME.textMuted,
             }}
@@ -138,13 +142,13 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
                   <div style={{ display: "flex", flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between" }}>
                     <div
                       style={{
-                        fontSize: 19,
+                        fontSize: 22,
                         fontWeight: isToday ? 800 : 500,
                         color: isToday ? "#ffffff" : THEME.text,
                         display: "flex",
                         backgroundColor: isToday ? THEME.accent : "transparent",
-                        width: 32,
-                        height: 32,
+                        width: 38,
+                        height: 38,
                         borderRadius: 999,
                         alignItems: "center",
                         justifyContent: "center",
@@ -152,7 +156,7 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
                     >
                       {dayNum}
                     </div>
-                    <div style={{ fontSize: 12, color: THEME.textFaint, display: "flex" }}>
+                    <div style={{ fontSize: 14, color: THEME.textFaint, display: "flex" }}>
                       {he(hebrewDateShort(cell.date))}
                     </div>
                   </div>
@@ -163,34 +167,43 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
                         const fill = personFill(normalizePerson(occ.event.person));
                         const isOverlap = overlapKeys.has(occurrenceKey(occ));
                         const isSpanContinuation = occ.isMultiDaySpan && occ.date !== occ.spanStart;
+                        const accent = categoryAccentColor(occ.event.category);
+                        const borderColorNormal = "rgba(255,255,255,0.15)";
                         return (
                           <div
                             key={occ.event.id + occ.date}
                             style={{
                               display: "flex",
                               justifyContent: "flex-end",
-                              fontSize: 14,
+                              fontSize: 17,
                               fontWeight: 700,
                               backgroundColor: fill.backgroundColor,
                               backgroundImage: fill.backgroundImage,
                               color: fill.text,
                               borderRadius: 6,
-                              border: isOverlap ? "2px dashed #fbbf24" : "1px solid rgba(255,255,255,0.15)",
-                              padding: "4px 8px",
-                              marginBottom: 4,
+                              borderTopWidth: isOverlap ? 3 : 1,
+                              borderBottomWidth: isOverlap ? 3 : 1,
+                              borderLeftWidth: isOverlap ? 3 : 1,
+                              borderRightWidth: isOverlap ? 3 : 6,
+                              borderStyle: "solid",
+                              borderTopColor: isOverlap ? OVERLAP_YELLOW : borderColorNormal,
+                              borderBottomColor: isOverlap ? OVERLAP_YELLOW : borderColorNormal,
+                              borderLeftColor: isOverlap ? OVERLAP_YELLOW : borderColorNormal,
+                              borderRightColor: isOverlap ? OVERLAP_YELLOW : accent,
+                              padding: "5px 9px",
+                              marginBottom: 5,
                               overflow: "hidden",
                             }}
                           >
-                            {isOverlap ? "⚠️ " : ""}
                             {isSpanContinuation
-                              ? he(truncate(occ.event.title, 12)) + " ←"
-                              : he(truncate(occ.event.title, 14))}
+                              ? he(truncate(occ.event.title, 10)) + " ←"
+                              : he(truncate(occ.event.title, 12))}
                           </div>
                         );
                       });
                     })()}
                     {overflow > 0 && (
-                      <div style={{ display: "flex", justifyContent: "flex-end", fontSize: 13, fontWeight: 600, color: THEME.textFaint }}>
+                      <div style={{ display: "flex", justifyContent: "flex-end", fontSize: 15, fontWeight: 600, color: THEME.textFaint }}>
                         {he(`ועוד ${overflow}`)}
                       </div>
                     )}

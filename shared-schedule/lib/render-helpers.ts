@@ -96,7 +96,9 @@ export function layoutDayColumn(occs: Occurrence[], hourHeightPx: number): LaidO
       start: item.start,
       end: item.end,
       top: ((item.start - GRID_START_MINUTES) / 60) * hourHeightPx,
-      height: Math.max(((item.end - item.start) / 60) * hourHeightPx, 14),
+      // Floor raised (14 -> 26) so the larger event-block text still fits
+      // legibly even for a 15-minute-long occurrence.
+      height: Math.max(((item.end - item.start) / 60) * hourHeightPx, 26),
       colIndex,
       numCols: 1, // filled in below
     });

@@ -4,6 +4,7 @@ import { he } from "../bidi";
 import { THEME } from "../theme";
 import { renderPeopleLegend, LEGEND_HEIGHT } from "../legend";
 import { normalizePerson, personFill } from "../people";
+import { categoryAccentColor } from "../category-color";
 import {
   GRID_START_MINUTES,
   GRID_END_MINUTES,
@@ -17,13 +18,17 @@ import {
 } from "../render-helpers";
 import type { Occurrence } from "../types";
 
+// A calm, friendly yellow for the overlap notice — not the same alarming
+// amber used for errors elsewhere.
+const OVERLAP_YELLOW = "#fde047";
+
 const WIDTH = 1900;
-const GUTTER = 84;
+const GUTTER = 96;
 const DAY_WIDTH = (WIDTH - GUTTER) / 7;
-const HOUR_HEIGHT = 56;
+const HOUR_HEIGHT = 68;
 const GRID_HEIGHT = ((GRID_END_MINUTES - GRID_START_MINUTES) / 60) * HOUR_HEIGHT;
-const HEADER_HEIGHT = 108;
-const SPAN_ROW_HEIGHT = 44;
+const HEADER_HEIGHT = 116;
+const SPAN_ROW_HEIGHT = 52;
 const MAX_SPAN_ROWS = 2;
 
 // Hebrew calendar convention: the week flows right-to-left — Sunday is the
@@ -126,26 +131,26 @@ export function renderWeekView(
                 justifyContent: "center",
               }}
             >
-              <div style={{ fontSize: 18, color: THEME.textMuted, display: "flex" }}>
+              <div style={{ fontSize: 21, color: THEME.textMuted, display: "flex" }}>
                 {he(WEEKDAY_LABELS[dayOfWeek(d)])}
               </div>
               <div
                 style={{
-                  fontSize: 32,
+                  fontSize: 36,
                   fontWeight: 800,
                   color: isToday ? "#ffffff" : THEME.text,
                   display: "flex",
                   backgroundColor: isToday ? THEME.accent : "transparent",
                   borderRadius: 999,
-                  width: 52,
-                  height: 52,
+                  width: 60,
+                  height: 60,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
                 {Number(d.slice(-2))}
               </div>
-              <div style={{ fontSize: 13, color: THEME.textFaint, display: "flex" }}>
+              <div style={{ fontSize: 15, color: THEME.textFaint, display: "flex" }}>
                 {he(hebrewDateShort(d))}
               </div>
             </div>
@@ -164,6 +169,7 @@ export function renderWeekView(
                 days.length - 1
               );
               const fill = personFill(normalizePerson(span.event.person));
+              const accent = categoryAccentColor(span.event.category);
               // RTL grid: the chronologically-later day sits further LEFT.
               const left = GUTTER + colX(endIdx);
               const width = (endIdx - startIdx + 1) * DAY_WIDTH - 4;
@@ -178,16 +184,17 @@ export function renderWeekView(
                     backgroundColor: fill.backgroundColor,
                     backgroundImage: fill.backgroundImage,
                     borderRadius: 10,
+                    borderRight: `7px solid ${accent}`,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "flex-end",
-                    paddingRight: 14,
-                    fontSize: 17,
+                    paddingRight: 16,
+                    fontSize: 20,
                     fontWeight: 700,
                     color: fill.text,
                   }}
                 >
-                  {he(truncate(span.event.title, 40))}
+                  {he(truncate(span.event.title, 34))}
                 </div>
               );
             })}
@@ -207,7 +214,7 @@ export function renderWeekView(
                 alignItems: "flex-start",
                 justifyContent: "center",
                 paddingTop: 4,
-                fontSize: 13,
+                fontSize: 16,
                 fontWeight: 600,
                 color: THEME.textFaint,
               }}
@@ -261,6 +268,18 @@ export function renderWeekView(
                 // looking like it simply ends there.
                 const spillsPastMidnight =
                   displayStartMinutes(block.occ) + displayDuration(block.occ) > GRID_END_MINUTES;
+                const accent = categoryAccentColor(block.occ.event.category);
+                // Narrower blocks (two occurrences sharing a column) need a
+                // shorter title or the bold 19px text wraps to a second
+                // line and collides with the time label below it.
+                const maxTitleChars = Math.max(4, Math.min(16, Math.floor((blockWidth - 40) / 12)));
+                const showSpillNote = spillsPastMidnight && block.numCols === 1;
+                const showOverlapNote = isOverlap && block.numCols === 1;
+                // Explicit per-side borders (rather than the `border`
+                // shorthand plus a `borderRight` override) — Satori doesn't
+                // reliably merge a shorthand with a longhand override the
+                // way a real browser's CSSOM does.
+                const borderColorNormal = "rgba(255,255,255,0.15)";
                 return (
                   <div
                     key={block.occ.event.id}
@@ -273,30 +292,42 @@ export function renderWeekView(
                       backgroundColor: fill.backgroundColor,
                       backgroundImage: fill.backgroundImage,
                       borderRadius: 8,
-                      border: isOverlap ? "3px dashed #fbbf24" : "1px solid rgba(255,255,255,0.15)",
+                      borderTopWidth: isOverlap ? 3 : 1,
+                      borderBottomWidth: isOverlap ? 3 : 1,
+                      borderLeftWidth: isOverlap ? 3 : 1,
+                      borderRightWidth: isOverlap ? 3 : 6,
+                      borderStyle: "solid",
+                      borderTopColor: isOverlap ? OVERLAP_YELLOW : borderColorNormal,
+                      borderBottomColor: isOverlap ? OVERLAP_YELLOW : borderColorNormal,
+                      borderLeftColor: isOverlap ? OVERLAP_YELLOW : borderColorNormal,
+                      borderRightColor: isOverlap ? OVERLAP_YELLOW : accent,
                       display: "flex",
                       flexDirection: "column",
                       alignItems: "flex-end",
                       overflow: "hidden",
-                      padding: 8,
-                      fontSize: 15,
+                      padding: 9,
+                      fontSize: 19,
                       color: fill.text,
                     }}
                   >
-                    <div style={{ fontWeight: 800, display: "flex" }}>
-                      {isOverlap ? "⚠️ " : ""}
-                      {he(truncate(block.occ.event.title, isOverlap ? 14 : 18))}
+                    <div style={{ fontWeight: 800, display: "flex", whiteSpace: "nowrap" }}>
+                      {he(truncate(block.occ.event.title, maxTitleChars))}
                     </div>
                     {block.occ.event.start_time && (
-                      <div style={{ fontSize: 12, opacity: 0.9, display: "flex" }}>
+                      <div style={{ fontSize: 15, opacity: 0.9, display: "flex" }}>
                         {minutesToLabel(
                           Number(block.occ.event.start_time.slice(0, 2)) * 60 +
                             Number(block.occ.event.start_time.slice(3, 5))
                         )}
                       </div>
                     )}
-                    {spillsPastMidnight && (
-                      <div style={{ fontSize: 11, opacity: 0.85, display: "flex" }}>{he("⋯ נמשך אחרי חצות")}</div>
+                    {showOverlapNote && (
+                      <div style={{ fontSize: 13, opacity: 0.95, display: "flex", color: OVERLAP_YELLOW }}>
+                        {he("חופפים בזמן")}
+                      </div>
+                    )}
+                    {showSpillNote && (
+                      <div style={{ fontSize: 13, opacity: 0.85, display: "flex" }}>{he("⋯ נמשך אחרי חצות")}</div>
                     )}
                   </div>
                 );

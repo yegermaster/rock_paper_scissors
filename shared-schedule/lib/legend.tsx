@@ -33,7 +33,7 @@ export function renderPeopleLegend(width: number) {
                 backgroundImage: fill.backgroundImage,
               }}
             />
-            <div style={{ fontSize: 14, fontWeight: 600, color: THEME.textMuted, display: "flex" }}>
+            <div style={{ fontSize: 16, fontWeight: 600, color: THEME.textMuted, display: "flex" }}>
               {he(PEOPLE_LABELS[person])}
             </div>
           </div>

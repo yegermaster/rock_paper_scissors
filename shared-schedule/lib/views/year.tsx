@@ -10,8 +10,8 @@ const HEADER_HEIGHT = 96;
 const COLS = 4;
 const ROWS = 3;
 const MINI_WIDTH = WIDTH / COLS;
-const MINI_HEIGHT = 340;
-const DOT_SIZE = 7;
+const MINI_HEIGHT = 360;
+const DOT_SIZE = 9;
 
 export function renderYearView(yearStart: string, occurrences: Occurrence[], today: string) {
   const year = Number(yearStart.slice(0, 4));
@@ -63,7 +63,7 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
               const totalCells = Math.ceil((firstWeekday + totalDays) / 7) * 7;
               const dayCellSize = (MINI_WIDTH - 16) / 7;
               // Months spanning 6 week-rows must still fit inside MINI_HEIGHT.
-              const rowHeight = 44;
+              const rowHeight = 47;
 
               const cells: (number | null)[] = [];
               for (let i = 0; i < totalCells; i++) {
@@ -85,7 +85,7 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
                     border: `1px solid ${THEME.border}`,
                   }}
                 >
-                  <div style={{ fontSize: 19, fontWeight: 800, color: THEME.accent, display: "flex", justifyContent: "flex-end", marginBottom: 6 }}>
+                  <div style={{ fontSize: 21, fontWeight: 800, color: THEME.accent, display: "flex", justifyContent: "flex-end", marginBottom: 6 }}>
                     {he(MONTH_LABELS[monthIdx])}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column" }}>
@@ -114,13 +114,13 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
                             >
                               <div
                                 style={{
-                                  fontSize: 13,
+                                  fontSize: 15,
                                   fontWeight: isToday ? 700 : 500,
                                   color: isToday ? "#ffffff" : THEME.textMuted,
                                   backgroundColor: isToday ? THEME.accent : "transparent",
                                   borderRadius: 999,
-                                  width: 20,
-                                  height: 20,
+                                  width: 24,
+                                  height: 24,
                                   display: "flex",
                                   alignItems: "center",
                                   justifyContent: "center",
