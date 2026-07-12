@@ -3,6 +3,7 @@ import { getSupabaseServerClient } from "@/lib/supabase";
 import { expandOccurrences } from "@/lib/recurrence";
 import { rangeFor } from "@/lib/view-range";
 import { todayInAppTimezone } from "@/lib/timezone";
+import { normalizePerson } from "@/lib/people";
 import type { EventRecord, ViewKind } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -34,7 +35,7 @@ export async function GET(req: NextRequest) {
       occurrenceDate: occ.date,
       title: occ.event.title,
       category: occ.event.category,
-      person: occ.event.person,
+      person: normalizePerson(occ.event.person),
       startTime: occ.event.start_time ? occ.event.start_time.slice(0, 5) : null,
       durationMinutes: occ.event.duration_minutes,
       isRecurring: !!occ.event.recurrence_frequency,
@@ -61,7 +62,7 @@ export async function POST(req: NextRequest) {
   const { error } = await supabase.from("events").insert({
     title: body.title,
     category: body.category || "other",
-    person: body.person || null,
+    person: normalizePerson(body.person),
     start_date: body.start_date,
     end_date: body.end_date || body.start_date,
     start_time: toTimeColumn(body.start_time || null),

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase";
+import { normalizePerson } from "@/lib/people";
 import type { EventRecord } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -17,7 +18,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const update: Partial<EventRecord> = {};
   if (body.title !== undefined) update.title = body.title;
   if (body.category !== undefined) update.category = body.category;
-  if (body.person !== undefined) update.person = body.person || null;
+  if (body.person !== undefined) update.person = normalizePerson(body.person);
   if (body.start_date !== undefined) update.start_date = body.start_date;
   if (body.end_date !== undefined) update.end_date = body.end_date || body.start_date;
   if (body.start_time !== undefined) update.start_time = toTimeColumn(body.start_time);

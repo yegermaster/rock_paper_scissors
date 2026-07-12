@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { THEME } from "@/lib/theme";
 import { dayOfWeek } from "@/lib/dates";
+import { PEOPLE_LABELS, personFill, type Person } from "@/lib/people";
 import type { EventListItem } from "@/lib/types";
 
 export type EventFormValues = {
   title: string;
   category: string;
-  person: string;
+  person: Person;
   start_date: string;
   start_time: string; // "" = none
   duration_minutes: number;
@@ -22,7 +23,7 @@ export function emptyFormValues(defaultDate: string): EventFormValues {
   return {
     title: "",
     category: "",
-    person: "",
+    person: "both",
     start_date: defaultDate,
     start_time: "",
     duration_minutes: 60,
@@ -37,7 +38,7 @@ export function formValuesFromItem(item: EventListItem): EventFormValues {
   return {
     title: item.title,
     category: item.category,
-    person: item.person || "",
+    person: item.person,
     start_date: item.occurrenceDate,
     start_time: item.startTime || "",
     duration_minutes: item.durationMinutes,
@@ -53,7 +54,7 @@ export function toEventPayload(values: EventFormValues) {
   return {
     title: values.title,
     category: values.category || null,
-    person: values.person || null,
+    person: values.person,
     start_date: values.start_date,
     end_date: values.start_date,
     start_time: values.start_time || null,
@@ -68,6 +69,8 @@ export function toEventPayload(values: EventFormValues) {
       : null,
   };
 }
+
+const ALL_PEOPLE: Person[] = ["itamar", "hadas", "both"];
 
 export default function EventForm({
   initial,
@@ -110,6 +113,34 @@ export default function EventForm({
       )}
 
       <input dir="rtl" placeholder="כותרת" value={values.title} onChange={(e) => set("title", e.target.value)} style={inputStyle} />
+
+      <div style={{ display: "flex", gap: 8 }}>
+        {ALL_PEOPLE.map((p) => {
+          const fill = personFill(p);
+          const active = values.person === p;
+          return (
+            <button
+              key={p}
+              type="button"
+              onClick={() => set("person", p)}
+              style={{
+                flex: 1,
+                padding: "10px 0",
+                borderRadius: 8,
+                border: active ? `2px solid ${fill.border}` : `1px solid ${THEME.border}`,
+                background: active ? fill.backgroundColor ?? "transparent" : THEME.bg,
+                backgroundImage: active ? fill.backgroundImage : undefined,
+                color: active ? fill.text : THEME.textMuted,
+                fontWeight: 700,
+                fontSize: 14,
+                cursor: "pointer",
+              }}
+            >
+              {PEOPLE_LABELS[p]}
+            </button>
+          );
+        })}
+      </div>
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
         <input type="date" value={values.start_date} onChange={(e) => set("start_date", e.target.value)} style={{ ...inputStyle, flex: 1, minWidth: 140 }} />

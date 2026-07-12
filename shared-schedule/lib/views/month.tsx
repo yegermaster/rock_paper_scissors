@@ -2,8 +2,9 @@ import { WEEKDAY_LABELS, dayOfWeek, daysInMonth, MONTH_LABELS } from "../dates";
 import { hebrewDateShort } from "../hebrew-date";
 import { he } from "../bidi";
 import { THEME } from "../theme";
-import { categoriesIn, renderLegend, LEGEND_HEIGHT } from "../legend";
-import { chipColors, displayStartMinutes, truncate } from "../render-helpers";
+import { renderPeopleLegend, LEGEND_HEIGHT } from "../legend";
+import { normalizePerson, personFill } from "../people";
+import { computeOverlapKeys, displayStartMinutes, occurrenceKey, truncate } from "../render-helpers";
 import type { Occurrence } from "../types";
 
 const WIDTH = 1900;
@@ -47,9 +48,7 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
   const rows: (typeof cells)[] = [];
   for (let i = 0; i < cells.length; i += 7) rows.push(toRtlRow(cells.slice(i, i + 7)));
 
-  const categories = categoriesIn(occurrences);
-  const legendHeight = categories.length > 0 ? LEGEND_HEIGHT : 0;
-  const height = HEADER_HEIGHT + WEEKDAY_ROW_HEIGHT + rows.length * CELL_HEIGHT + legendHeight;
+  const height = HEADER_HEIGHT + WEEKDAY_ROW_HEIGHT + rows.length * CELL_HEIGHT + LEGEND_HEIGHT;
 
   const node = (
     <div
@@ -158,31 +157,38 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
                     </div>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", marginTop: 6 }}>
-                    {visible.map((occ) => {
-                      const colors = chipColors(occ.event.category);
-                      const isSpanContinuation = occ.isMultiDaySpan && occ.date !== occ.spanStart;
-                      return (
-                        <div
-                          key={occ.event.id + occ.date}
-                          style={{
-                            display: "flex",
-                            justifyContent: "flex-end",
-                            fontSize: 14,
-                            fontWeight: 700,
-                            backgroundColor: colors.bg,
-                            color: colors.text,
-                            borderRadius: 6,
-                            padding: "4px 8px",
-                            marginBottom: 4,
-                            overflow: "hidden",
-                          }}
-                        >
-                          {isSpanContinuation
-                            ? he(truncate(occ.event.title, 12)) + " ←"
-                            : he(truncate(occ.event.title, 14))}
-                        </div>
-                      );
-                    })}
+                    {(() => {
+                      const overlapKeys = computeOverlapKeys(dayOccs);
+                      return visible.map((occ) => {
+                        const fill = personFill(normalizePerson(occ.event.person));
+                        const isOverlap = overlapKeys.has(occurrenceKey(occ));
+                        const isSpanContinuation = occ.isMultiDaySpan && occ.date !== occ.spanStart;
+                        return (
+                          <div
+                            key={occ.event.id + occ.date}
+                            style={{
+                              display: "flex",
+                              justifyContent: "flex-end",
+                              fontSize: 14,
+                              fontWeight: 700,
+                              backgroundColor: fill.backgroundColor,
+                              backgroundImage: fill.backgroundImage,
+                              color: fill.text,
+                              borderRadius: 6,
+                              border: isOverlap ? "2px dashed #fbbf24" : "1px solid rgba(255,255,255,0.15)",
+                              padding: "4px 8px",
+                              marginBottom: 4,
+                              overflow: "hidden",
+                            }}
+                          >
+                            {isOverlap ? "⚠️ " : ""}
+                            {isSpanContinuation
+                              ? he(truncate(occ.event.title, 12)) + " ←"
+                              : he(truncate(occ.event.title, 14))}
+                          </div>
+                        );
+                      });
+                    })()}
                     {overflow > 0 && (
                       <div style={{ display: "flex", justifyContent: "flex-end", fontSize: 13, fontWeight: 600, color: THEME.textFaint }}>
                         {he(`ועוד ${overflow}`)}
@@ -196,7 +202,7 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
         ))}
       </div>
 
-      {renderLegend(categories, WIDTH)}
+      {renderPeopleLegend(WIDTH)}
     </div>
   );
 

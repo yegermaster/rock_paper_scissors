@@ -1,8 +1,8 @@
 import { dayOfWeek, daysInMonth, MONTH_LABELS } from "../dates";
 import { he } from "../bidi";
 import { THEME } from "../theme";
-import { categoriesIn, renderLegend, LEGEND_HEIGHT } from "../legend";
-import { chipColors } from "../render-helpers";
+import { renderPeopleLegend, LEGEND_HEIGHT } from "../legend";
+import { normalizePerson, personFill } from "../people";
 import type { Occurrence } from "../types";
 
 const WIDTH = 1900;
@@ -22,9 +22,7 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
     byDate.get(occ.date)!.push(occ);
   }
 
-  const categories = categoriesIn(occurrences);
-  const legendHeight = categories.length > 0 ? LEGEND_HEIGHT : 0;
-  const height = HEADER_HEIGHT + ROWS * MINI_HEIGHT + legendHeight;
+  const height = HEADER_HEIGHT + ROWS * MINI_HEIGHT + LEGEND_HEIGHT;
 
   const node = (
     <div
@@ -100,7 +98,7 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
                           const date = `${year}-${String(month1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
                           const isToday = date === today;
                           const dayOccs = byDate.get(date) ?? [];
-                          const dotCategories = [...new Set(dayOccs.map((o) => o.event.category))].slice(0, 3);
+                          const dotPeople = [...new Set(dayOccs.map((o) => normalizePerson(o.event.person)))];
 
                           return (
                             <div
@@ -131,19 +129,23 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
                                 {dayNum}
                               </div>
                               <div style={{ display: "flex", marginTop: 2 }}>
-                                {dotCategories.map((cat) => (
-                                  <div
-                                    key={cat}
-                                    style={{
-                                      width: DOT_SIZE,
-                                      height: DOT_SIZE,
-                                      borderRadius: 999,
-                                      backgroundColor: chipColors(cat).bg,
-                                      marginLeft: 1,
-                                      display: "flex",
-                                    }}
-                                  />
-                                ))}
+                                {dotPeople.map((person) => {
+                                  const fill = personFill(person);
+                                  return (
+                                    <div
+                                      key={person}
+                                      style={{
+                                        width: DOT_SIZE,
+                                        height: DOT_SIZE,
+                                        borderRadius: 999,
+                                        backgroundColor: fill.backgroundColor,
+                                        backgroundImage: fill.backgroundImage,
+                                        marginLeft: 1,
+                                        display: "flex",
+                                      }}
+                                    />
+                                  );
+                                })}
                               </div>
                             </div>
                           );
@@ -158,7 +160,7 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
         ))}
       </div>
 
-      {renderLegend(categories, WIDTH)}
+      {renderPeopleLegend(WIDTH)}
     </div>
   );
 

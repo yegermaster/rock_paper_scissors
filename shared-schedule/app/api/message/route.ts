@@ -6,6 +6,7 @@ import { addDays } from "@/lib/dates";
 import { rangeFor } from "@/lib/view-range";
 import { todayInAppTimezone } from "@/lib/timezone";
 import { formatHebrewDateLong, formatRecurrenceHebrew, formatTimeHebrew } from "@/lib/hebrew-format";
+import { normalizePerson, PEOPLE_LABELS } from "@/lib/people";
 import type { EventRecord, PendingAction, ParsedEventFields, ViewKind } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -47,8 +48,8 @@ function summarize(action: PendingAction): string {
       `📅 ${e.start_date ? formatHebrewDateLong(e.start_date) : "?"}`,
       `🕐 ${formatTimeHebrew(e.start_time)}`,
       `🔁 ${formatRecurrenceHebrew(e.recurrence?.frequency, e.recurrence?.days_of_week, e.recurrence?.interval, e.recurrence?.end_date)}`,
+      `👤 ${PEOPLE_LABELS[normalizePerson(e.person)]}`,
     ];
-    if (e.person) lines.push(`👤 ${e.person}`);
     lines.push("לאשר? (כן / לא)");
     return lines.join("\n");
   }
@@ -56,7 +57,8 @@ function summarize(action: PendingAction): string {
     const note = action.targetIsRecurring
       ? "\n⚠️ זה ימחק את כל סדרת האירועים החוזרים, לא רק מופע אחד."
       : "";
-    return `למחוק את "${action.targetTitle}"?${note}\nלאשר? (כן / לא)`;
+    const who = action.targetPerson ? ` (${PEOPLE_LABELS[action.targetPerson]})` : "";
+    return `למחוק את "${action.targetTitle}"${who}?${note}\nלאשר? (כן / לא)`;
   }
   // edit
   const e = action.event;
@@ -65,6 +67,7 @@ function summarize(action: PendingAction): string {
   if (e?.start_date) parts.push(`תאריך חדש: ${formatHebrewDateLong(e.start_date)}`);
   if (e?.start_time !== undefined && e?.start_time !== null) parts.push(`שעה חדשה: ${formatTimeHebrew(e.start_time)}`);
   if (e?.category) parts.push(`קטגוריה חדשה: ${e.category}`);
+  if (e?.person) parts.push(`שייך ל: ${PEOPLE_LABELS[e.person]}`);
   if (e?.recurrence) parts.push(`חזרתיות: ${formatRecurrenceHebrew(e.recurrence.frequency, e.recurrence.days_of_week, e.recurrence.interval, e.recurrence.end_date)}`);
   return `לעדכן את "${action.targetTitle}":\n${parts.join("\n")}\nלאשר? (כן / לא)`;
 }
@@ -84,7 +87,7 @@ async function commitAction(supabase: ReturnType<typeof getSupabaseServerClient>
     const { error } = await supabase.from("events").insert({
       title: e.title,
       category: e.category ?? "other",
-      person: e.person ?? null,
+      person: normalizePerson(e.person),
       start_date: e.start_date,
       end_date: e.end_date ?? e.start_date,
       start_time: toTimeColumn(e.start_time),
@@ -208,9 +211,10 @@ export async function POST(req: NextRequest) {
     }
     if (revised.confirmed) return await commitAction(supabase, pendingAction);
 
+    const updatedEvent = revised.updatedEvent ?? pendingAction.event;
     const updatedAction: PendingAction = {
       ...pendingAction,
-      event: revised.updatedEvent ?? pendingAction.event,
+      event: updatedEvent ? { ...updatedEvent, person: normalizePerson(updatedEvent.person) } : null,
     };
     return needsConfirmationResponse(updatedAction);
   }
@@ -236,7 +240,8 @@ export async function POST(req: NextRequest) {
     if (!e || !e.title || !e.start_date) {
       return clarify("מה האירוע, ובאיזה תאריך?");
     }
-    return needsConfirmationResponse({ intent: "add", event: e, targetEventId: null, targetTitle: null, targetIsRecurring: false });
+    const event = { ...e, person: normalizePerson(e.person) };
+    return needsConfirmationResponse({ intent: "add", event, targetEventId: null, targetTitle: null, targetPerson: null, targetIsRecurring: false });
   }
 
   if (parsed.intent === "delete" || parsed.intent === "edit") {
@@ -256,6 +261,7 @@ export async function POST(req: NextRequest) {
         event: null,
         targetEventId: event.id,
         targetTitle: event.title,
+        targetPerson: normalizePerson(event.person),
         targetIsRecurring: !!event.recurrence_frequency,
       });
     }
@@ -268,6 +274,7 @@ export async function POST(req: NextRequest) {
       event: e,
       targetEventId: event.id,
       targetTitle: event.title,
+      targetPerson: normalizePerson(event.person),
       targetIsRecurring: !!event.recurrence_frequency,
     });
   }

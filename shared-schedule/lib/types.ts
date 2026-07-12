@@ -1,3 +1,5 @@
+import type { Person } from "./people";
+
 export type Recurrence = {
   frequency: "daily" | "weekly" | "monthly" | null;
   interval: number | null;
@@ -9,7 +11,7 @@ export type EventRecord = {
   id: string;
   title: string;
   category: string;
-  person: string | null;
+  person: Person;
   start_date: string; // YYYY-MM-DD
   end_date: string; // YYYY-MM-DD
   start_time: string | null; // HH:MM:SS or null (untimed)
@@ -34,7 +36,7 @@ export type Occurrence = {
 export type ParsedEventFields = {
   title: string | null;
   category: string | null;
-  person: string | null;
+  person: Person | null; // null only mid-parse; always normalized before saving
   start_date: string | null;
   end_date: string | null;
   start_time: string | null;
@@ -66,6 +68,7 @@ export type PendingAction = {
   event: ParsedEventFields | null; // for add/edit
   targetEventId: string | null; // resolved concrete event id, for edit/delete
   targetTitle: string | null; // resolved event's current title, for confirmation copy
+  targetPerson: Person | null; // resolved event's current person tag, for confirmation copy
   targetIsRecurring: boolean; // for delete confirmation copy
 };
 
@@ -88,7 +91,7 @@ export type EventListItem = {
   occurrenceDate: string;
   title: string;
   category: string;
-  person: string | null;
+  person: Person;
   startTime: string | null; // "HH:MM" or null
   durationMinutes: number;
   isRecurring: boolean;

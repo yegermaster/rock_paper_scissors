@@ -2,13 +2,15 @@ import { WEEKDAY_LABELS, addDays, dayOfWeek } from "../dates";
 import { hebrewDateShort } from "../hebrew-date";
 import { he } from "../bidi";
 import { THEME } from "../theme";
-import { categoriesIn, renderLegend, LEGEND_HEIGHT } from "../legend";
+import { renderPeopleLegend, LEGEND_HEIGHT } from "../legend";
+import { normalizePerson, personFill } from "../people";
 import {
   GRID_START_MINUTES,
   GRID_END_MINUTES,
-  chipColors,
+  computeOverlapKeys,
   layoutDayColumn,
   minutesToLabel,
+  occurrenceKey,
   truncate,
 } from "../render-helpers";
 import type { Occurrence } from "../types";
@@ -84,9 +86,7 @@ export function renderWeekView(
   const hourMarks: number[] = [];
   for (let m = GRID_START_MINUTES; m <= GRID_END_MINUTES; m += 60) hourMarks.push(m);
 
-  const categories = categoriesIn(occurrences);
-  const legendHeight = categories.length > 0 ? LEGEND_HEIGHT : 0;
-  const height = HEADER_HEIGHT + spanAreaHeight + GRID_HEIGHT + legendHeight + 8;
+  const height = HEADER_HEIGHT + spanAreaHeight + GRID_HEIGHT + LEGEND_HEIGHT + 8;
 
   const node = (
     <div
@@ -159,7 +159,7 @@ export function renderWeekView(
                 days.indexOf(span.spanEnd) === -1 ? days.length - 1 : days.indexOf(span.spanEnd),
                 days.length - 1
               );
-              const colors = chipColors(span.event.category);
+              const fill = personFill(normalizePerson(span.event.person));
               // RTL grid: the chronologically-later day sits further LEFT.
               const left = GUTTER + colX(endIdx);
               const width = (endIdx - startIdx + 1) * DAY_WIDTH - 4;
@@ -171,7 +171,8 @@ export function renderWeekView(
                     left: left + 3,
                     width,
                     height: SPAN_ROW_HEIGHT - 8,
-                    backgroundColor: colors.bg,
+                    backgroundColor: fill.backgroundColor,
+                    backgroundImage: fill.backgroundImage,
                     borderRadius: 10,
                     display: "flex",
                     alignItems: "center",
@@ -179,7 +180,7 @@ export function renderWeekView(
                     paddingRight: 14,
                     fontSize: 17,
                     fontWeight: 700,
-                    color: colors.text,
+                    color: fill.text,
                   }}
                 >
                   {he(truncate(span.event.title, 40))}
@@ -213,7 +214,9 @@ export function renderWeekView(
         </div>
 
         {displayDays.map((d) => {
-          const laidOut = layoutDayColumn(byDay.get(d) ?? [], HOUR_HEIGHT);
+          const dayOccs = byDay.get(d) ?? [];
+          const laidOut = layoutDayColumn(dayOccs, HOUR_HEIGHT);
+          const overlapKeys = computeOverlapKeys(dayOccs);
           const isToday = d === today;
           return (
             <div
@@ -245,7 +248,8 @@ export function renderWeekView(
                 )
               )}
               {laidOut.map((block) => {
-                const colors = chipColors(block.occ.event.category);
+                const fill = personFill(normalizePerson(block.occ.event.person));
+                const isOverlap = overlapKeys.has(occurrenceKey(block.occ));
                 const blockWidth = DAY_WIDTH / block.numCols;
                 return (
                   <div
@@ -256,31 +260,29 @@ export function renderWeekView(
                       left: block.colIndex * blockWidth + 2,
                       width: blockWidth - 4,
                       height: block.height - 3,
-                      backgroundColor: colors.bg,
+                      backgroundColor: fill.backgroundColor,
+                      backgroundImage: fill.backgroundImage,
                       borderRadius: 8,
+                      border: isOverlap ? "3px dashed #fbbf24" : "1px solid rgba(255,255,255,0.15)",
                       display: "flex",
                       flexDirection: "column",
                       alignItems: "flex-end",
                       overflow: "hidden",
                       padding: 8,
                       fontSize: 15,
-                      color: colors.text,
+                      color: fill.text,
                     }}
                   >
                     <div style={{ fontWeight: 800, display: "flex" }}>
-                      {he(truncate(block.occ.event.title, 18))}
+                      {isOverlap ? "⚠️ " : ""}
+                      {he(truncate(block.occ.event.title, isOverlap ? 14 : 18))}
                     </div>
                     {block.occ.event.start_time && (
-                      <div style={{ fontSize: 12, opacity: 0.85, display: "flex" }}>
+                      <div style={{ fontSize: 12, opacity: 0.9, display: "flex" }}>
                         {minutesToLabel(
                           Number(block.occ.event.start_time.slice(0, 2)) * 60 +
                             Number(block.occ.event.start_time.slice(3, 5))
                         )}
-                      </div>
-                    )}
-                    {block.occ.event.person && (
-                      <div style={{ fontSize: 12, opacity: 0.85, display: "flex" }}>
-                        {he(block.occ.event.person)}
                       </div>
                     )}
                   </div>
@@ -291,7 +293,7 @@ export function renderWeekView(
         })}
       </div>
 
-      {renderLegend(categories, WIDTH)}
+      {renderPeopleLegend(WIDTH)}
     </div>
   );
 

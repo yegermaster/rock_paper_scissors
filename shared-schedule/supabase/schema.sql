@@ -7,7 +7,8 @@ create table if not exists events (
 
   title text not null,
   category text not null,       -- open-ended, free text (e.g. "dinner", "work", "gym")
-  person text,                  -- inferred from phrasing ("my shift"); null = shared/unowned
+  person text not null default 'both'
+    check (person in ('itamar', 'hadas', 'both')),  -- who the event is tagged to
 
   start_date date not null,
   end_date date not null,       -- multi-day events: end_date > start_date

@@ -1,16 +1,11 @@
-import { colorForCategory } from "./colors";
-import { he } from "./bidi";
+import { PEOPLE_LABELS, personFill, type Person } from "./people";
 import { THEME } from "./theme";
-import type { Occurrence } from "./types";
 
 export const LEGEND_HEIGHT = 56;
 
-export function categoriesIn(occurrences: Occurrence[]): string[] {
-  return [...new Set(occurrences.map((o) => o.event.category))].sort();
-}
+const ALL_PEOPLE: Person[] = ["itamar", "hadas", "both"];
 
-export function renderLegend(categories: string[], width: number) {
-  if (categories.length === 0) return null;
+export function renderPeopleLegend(width: number) {
   return (
     <div
       style={{
@@ -22,21 +17,26 @@ export function renderLegend(categories: string[], width: number) {
         borderTop: `1px solid ${THEME.border}`,
       }}
     >
-      {categories.map((cat) => (
-        <div key={cat} style={{ display: "flex", alignItems: "center", marginLeft: 26 }}>
-          <div
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: 999,
-              backgroundColor: colorForCategory(cat).bg,
-              display: "flex",
-              marginLeft: 8,
-            }}
-          />
-          <div style={{ fontSize: 14, fontWeight: 600, color: THEME.textMuted, display: "flex" }}>{he(cat)}</div>
-        </div>
-      ))}
+      {ALL_PEOPLE.map((person) => {
+        const fill = personFill(person);
+        return (
+          <div key={person} style={{ display: "flex", alignItems: "center", marginLeft: 26 }}>
+            <div
+              style={{
+                width: 14,
+                height: 14,
+                borderRadius: 999,
+                marginLeft: 8,
+                display: "flex",
+                ...(fill.backgroundColor ? { backgroundColor: fill.backgroundColor } : { backgroundImage: fill.backgroundImage }),
+              }}
+            />
+            <div style={{ fontSize: 14, fontWeight: 600, color: THEME.textMuted, display: "flex" }}>
+              {PEOPLE_LABELS[person]}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -7,7 +7,7 @@ const eventSchema = {
   properties: {
     title: { type: SchemaType.STRING, nullable: true },
     category: { type: SchemaType.STRING, nullable: true },
-    person: { type: SchemaType.STRING, nullable: true },
+    person: { type: SchemaType.STRING, nullable: true, enum: ["itamar", "hadas", "both"] },
     start_date: { type: SchemaType.STRING, nullable: true },
     end_date: { type: SchemaType.STRING, nullable: true },
     start_time: { type: SchemaType.STRING, nullable: true },
@@ -45,8 +45,9 @@ const responseSchema = {
 };
 
 const SYSTEM_INSTRUCTIONS = `You turn one chat message into a structured calendar action for a shared
-schedule app used by two people (a couple). The app's UI is entirely in
-Hebrew and messages will usually be written in Hebrew (occasionally English).
+schedule app used by a couple: איתמר (Itamar, "itamar") and הדס (Hadas,
+"hadas"). The app's UI is entirely in Hebrew and messages will usually be
+written in Hebrew (occasionally English).
 
 Respond ONLY with the JSON described by the schema. Rules:
 
@@ -79,8 +80,16 @@ Respond ONLY with the JSON described by the schema. Rules:
 - category is a short free-text label you infer from the message (e.g.
   "dinner", "work", "dance class", "todo") — do not force it into a fixed
   set, just pick something short and sensible.
-- person: only set this if the message itself implies ownership (e.g. "my
-  shift", "her appointment") — otherwise leave null (shared/unowned).
+- person: EVERY event must be tagged "itamar", "hadas", or "both" — never
+  leave it null for an add/edit. Infer from the message:
+  - Named explicitly ("איתמר", "הדס", "Itamar", "Hadas", or a possessive
+    referring to one of them) → that person.
+  - Something the couple clearly does together (dinner together, a joint
+    outing, a shared errand), or no cue at all about who specifically →
+    "both". This is the safe default — don't strain to guess a single
+    person from a weak cue.
+  - The user sees exactly who it's tagged to in the confirmation step and
+    can correct it with a follow-up reply, so a reasonable guess is fine.
 - recurrence: only set frequency/interval/days_of_week/end_date when the
   message clearly describes a repeating event ("every Monday", "every other
   week", "each weekday"). days_of_week uses 0=Sunday..6=Saturday. Leave the
@@ -159,17 +168,20 @@ const REVISE_SCHEMA = {
   required: ["confirmed", "cancelled"],
 };
 
-const REVISE_INSTRUCTIONS = `You are handling a reply to a pending calendar-event confirmation. The
-app already showed the user a summary of an event (given below as PENDING
-EVENT) and asked "confirm?". Now interpret their reply:
+const REVISE_INSTRUCTIONS = `You are handling a reply to a pending calendar-event confirmation, for a
+shared calendar app used by a couple: איתמר (Itamar, "itamar") and הדס
+(Hadas, "hadas") — every event's person field is one of "itamar", "hadas",
+"both". The app already showed the user a summary of an event (given below
+as PENDING EVENT) and asked "confirm?". Now interpret their reply:
 
 - If they're plainly agreeing ("כן", "מאשר", "בטח", "yes", "מעולה", "סבבה")
   → confirmed=true, cancelled=false, updated_event=null.
 - If they're plainly declining the whole thing ("לא", "בטל", "עזוב",
   "no", "תשכח מזה") → confirmed=false, cancelled=true, updated_event=null.
 - If they're correcting or adding a detail instead of a plain yes/no
-  ("לא, תזיז לשמונה", "זה כל שבוע לא חד פעמי", "שיהיה ביום שלישי") →
-  confirmed=false, cancelled=false, and updated_event = a COMPLETE event
+  ("לא, תזיז לשמונה", "זה כל שבוע לא חד פעמי", "שיהיה ביום שלישי", "זה רק
+  בשבילי", "זה של הדס לא שנינו") → confirmed=false, cancelled=false, and
+  updated_event = a COMPLETE event
   object: copy every field from PENDING EVENT unchanged except the ones the
   reply corrects. Never drop fields the user didn't mention.
 - Dates in updated_event follow the same "YYYY-MM-DD" / CURRENT DATE rules

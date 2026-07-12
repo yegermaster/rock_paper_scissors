@@ -1,4 +1,3 @@
-import { colorForCategory } from "./colors";
 import type { Occurrence } from "./types";
 
 // Untimed events (todos) render at a fixed end-of-day slot instead of a
@@ -31,8 +30,32 @@ export function truncate(str: string, max: number): string {
   return str.length > max ? str.slice(0, max - 1) + "…" : str;
 }
 
-export function chipColors(category: string) {
-  return colorForCategory(category);
+export function occurrenceKey(occ: Occurrence): string {
+  return occ.event.id + occ.date;
+}
+
+/** "Apart" occurrences (person !== "both") whose time ranges overlap on the
+ * same day — the couple is double-booked with two different things. Keyed
+ * by occurrenceKey() so callers can flag both blocks involved. */
+export function computeOverlapKeys(dayOccs: Occurrence[]): Set<string> {
+  const overlapping = new Set<string>();
+  const apart = dayOccs.filter((o) => o.event.person !== "both");
+  for (let i = 0; i < apart.length; i++) {
+    for (let j = i + 1; j < apart.length; j++) {
+      const a = apart[i];
+      const b = apart[j];
+      if (a.event.person === b.event.person) continue; // same person double-booked with themself isn't this kind of conflict
+      const aStart = displayStartMinutes(a);
+      const aEnd = aStart + displayDuration(a);
+      const bStart = displayStartMinutes(b);
+      const bEnd = bStart + displayDuration(b);
+      if (aStart < bEnd && bStart < aEnd) {
+        overlapping.add(occurrenceKey(a));
+        overlapping.add(occurrenceKey(b));
+      }
+    }
+  }
+  return overlapping;
 }
 
 export type LaidOutBlock = {

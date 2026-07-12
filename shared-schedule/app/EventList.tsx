@@ -1,6 +1,7 @@
 "use client";
 
 import { THEME } from "@/lib/theme";
+import { PEOPLE_LABELS, personFill, normalizePerson } from "@/lib/people";
 import type { EventListItem } from "@/lib/types";
 
 export default function EventList({
@@ -25,7 +26,10 @@ export default function EventList({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      {items.map((item) => (
+      {items.map((item) => {
+        const person = normalizePerson(item.person);
+        const fill = personFill(person);
+        return (
         <div
           key={item.id + item.occurrenceDate}
           style={{
@@ -40,6 +44,19 @@ export default function EventList({
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+            <div
+              title={PEOPLE_LABELS[person]}
+              aria-label={PEOPLE_LABELS[person]}
+              style={{
+                width: 12,
+                height: 12,
+                borderRadius: "50%",
+                flexShrink: 0,
+                backgroundColor: fill.backgroundColor,
+                backgroundImage: fill.backgroundImage,
+                border: `1px solid ${fill.border}`,
+              }}
+            />
             <div style={{ color: THEME.textFaint, fontSize: 13, whiteSpace: "nowrap" }}>
               {item.occurrenceDate.slice(8, 10)}/{item.occurrenceDate.slice(5, 7)}
               {item.startTime ? ` · ${item.startTime}` : ""}
@@ -78,7 +95,8 @@ export default function EventList({
             </button>
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
