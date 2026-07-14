@@ -1,7 +1,7 @@
 import { dayOfWeek, daysInMonth, MONTH_LABELS } from "../dates";
 import { he } from "../bidi";
 import { THEME } from "../theme";
-import { renderPeopleLegend, LEGEND_HEIGHT } from "../legend";
+import { renderLegends, LEGENDS_HEIGHT } from "../legend";
 import { normalizePerson, personFill } from "../people";
 import type { Occurrence } from "../types";
 
@@ -22,7 +22,7 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
     byDate.get(occ.date)!.push(occ);
   }
 
-  const height = HEADER_HEIGHT + ROWS * MINI_HEIGHT + LEGEND_HEIGHT;
+  const height = HEADER_HEIGHT + ROWS * MINI_HEIGHT + LEGENDS_HEIGHT;
 
   const node = (
     <div
@@ -160,7 +160,7 @@ export function renderYearView(yearStart: string, occurrences: Occurrence[], tod
         ))}
       </div>
 
-      {renderPeopleLegend(WIDTH)}
+      {renderLegends(WIDTH)}
     </div>
   );
 

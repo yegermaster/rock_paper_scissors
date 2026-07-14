@@ -2,7 +2,7 @@ import { WEEKDAY_LABELS, dayOfWeek, daysInMonth, MONTH_LABELS } from "../dates";
 import { hebrewDateShort } from "../hebrew-date";
 import { he } from "../bidi";
 import { THEME } from "../theme";
-import { renderPeopleLegend, LEGEND_HEIGHT } from "../legend";
+import { renderLegends, LEGENDS_HEIGHT } from "../legend";
 import { normalizePerson, personFill } from "../people";
 import { categoryAccentColor } from "../category-color";
 import { computeOverlapKeys, displayStartMinutes, occurrenceKey, truncate } from "../render-helpers";
@@ -13,9 +13,9 @@ const OVERLAP_YELLOW = "#fde047";
 
 const WIDTH = 1900;
 const HEADER_HEIGHT = 96;
-const WEEKDAY_ROW_HEIGHT = 50;
+const WEEKDAY_ROW_HEIGHT = 54;
 const MAX_CHIPS_PER_CELL = 3;
-const CELL_HEIGHT = 220;
+const CELL_HEIGHT = 250;
 
 // Hebrew calendar convention: weeks flow right-to-left — Sunday is the
 // rightmost cell of each row. Reverse each row's physical order.
@@ -52,7 +52,7 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
   const rows: (typeof cells)[] = [];
   for (let i = 0; i < cells.length; i += 7) rows.push(toRtlRow(cells.slice(i, i + 7)));
 
-  const height = HEADER_HEIGHT + WEEKDAY_ROW_HEIGHT + rows.length * CELL_HEIGHT + LEGEND_HEIGHT;
+  const height = HEADER_HEIGHT + WEEKDAY_ROW_HEIGHT + rows.length * CELL_HEIGHT + LEGENDS_HEIGHT;
 
   const node = (
     <div
@@ -89,7 +89,7 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: 18,
+              fontSize: 20,
               fontWeight: 700,
               color: THEME.textMuted,
             }}
@@ -142,13 +142,13 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
                   <div style={{ display: "flex", flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between" }}>
                     <div
                       style={{
-                        fontSize: 22,
+                        fontSize: 25,
                         fontWeight: isToday ? 800 : 500,
                         color: isToday ? "#ffffff" : THEME.text,
                         display: "flex",
                         backgroundColor: isToday ? THEME.accent : "transparent",
-                        width: 38,
-                        height: 38,
+                        width: 44,
+                        height: 44,
                         borderRadius: 999,
                         alignItems: "center",
                         justifyContent: "center",
@@ -156,7 +156,7 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
                     >
                       {dayNum}
                     </div>
-                    <div style={{ fontSize: 14, color: THEME.textFaint, display: "flex" }}>
+                    <div style={{ fontSize: 16, color: THEME.textFaint, display: "flex" }}>
                       {he(hebrewDateShort(cell.date))}
                     </div>
                   </div>
@@ -175,7 +175,7 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
                             style={{
                               display: "flex",
                               justifyContent: "flex-end",
-                              fontSize: 17,
+                              fontSize: 20,
                               fontWeight: 700,
                               backgroundColor: fill.backgroundColor,
                               backgroundImage: fill.backgroundImage,
@@ -203,7 +203,7 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
                       });
                     })()}
                     {overflow > 0 && (
-                      <div style={{ display: "flex", justifyContent: "flex-end", fontSize: 15, fontWeight: 600, color: THEME.textFaint }}>
+                      <div style={{ display: "flex", justifyContent: "flex-end", fontSize: 17, fontWeight: 600, color: THEME.textFaint }}>
                         {he(`ועוד ${overflow}`)}
                       </div>
                     )}
@@ -215,7 +215,7 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
         ))}
       </div>
 
-      {renderPeopleLegend(WIDTH)}
+      {renderLegends(WIDTH)}
     </div>
   );
 

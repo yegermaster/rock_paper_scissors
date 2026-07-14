@@ -1,38 +1,49 @@
 // A small accent color per event category, shown as a thin stripe on top
 // of the person-based fill (blue/pink/gradient) so events also read as
 // "what kind of thing is this" at a glance. Categories are open-ended free
-// text, so we match common keywords — same idea as the old category-color
-// scheme, just layered as an accent instead of being the main fill.
+// text, so we bucket common keywords into six broad, low-eye-strain
+// pastel categories (palette chosen for calm long-session readability,
+// not saturated/loud colors).
 //
 // Rendered as flat CSS shapes (never text/emoji): the fonts loaded for the
 // calendar image only cover Hebrew + Latin glyphs, so any emoji character
 // would render as a missing-glyph box under Satori.
-const CATEGORY_HUES: { pattern: RegExp; hue: number }[] = [
-  { pattern: /עבודה|משמרת|משרד|פגיש|work|shift|meeting/i, hue: 210 }, // sky
-  { pattern: /ארוח|אוכל|מסעד|דינר|בישול|קפה|dinner|lunch|food|coffee/i, hue: 27 }, // orange/tan
-  { pattern: /ספורט|ריצה|כושר|אימון|שחיה|יוגה|ג'יטסו|gym|run|sport|yoga/i, hue: 152 }, // green
-  { pattern: /ריקוד|חוג|שיעור|מוזיקה|אמנות|תחביב|dance|class|hobby|music/i, hue: 43 }, // gold
-  { pattern: /לימוד|אוניברסיט|מבחן|קורס|study|exam|school|course/i, hue: 265 }, // violet
-  { pattern: /טיול|חופש|נסיעה|טיסה|מלון|trip|vacation|travel|hotel|flight/i, hue: 174 }, // teal
-  { pattern: /רופא|תור|בריאות|שיניים|doctor|health|dentist/i, hue: 355 }, // deep red
-  { pattern: /קניות|סופר|shopping/i, hue: 320 }, // magenta
-  { pattern: /משפחה|יום הולדת|מסיב|family|birthday|party/i, hue: 45 }, // gold
-  { pattern: /חבר|social|friend/i, hue: 15 }, // warm orange-red
-  { pattern: /משימ|סידור|todo|task|errand/i, hue: 200 }, // steel blue
+export type EventCategoryBucket = "work" | "study" | "sport" | "leisure" | "chores" | "important";
+
+export const CATEGORY_LABELS: Record<EventCategoryBucket, string> = {
+  work: "עבודה",
+  study: "לימודים",
+  sport: "ספורט",
+  leisure: "פנאי וחברים",
+  chores: "משימות בית",
+  important: "אירועים חשובים",
+};
+
+export const CATEGORY_COLORS: Record<EventCategoryBucket, string> = {
+  work: "#A9CCE3", // pastel blue — cool, easy on the eyes for work items
+  study: "#D7BDE2", // light purple — distinct from work, avoids confusion
+  sport: "#F5CBA7", // peach orange — warm/energetic but low-saturation
+  leisure: "#A3E4D7", // mint green — soothing, separates downtime from tasks
+  chores: "#D5D8DC", // blue-gray — neutral, low-priority routine tasks
+  important: "#F5B7B1", // delicate red-pink — noticeable without being alarming
+};
+
+const CATEGORY_PATTERNS: { pattern: RegExp; category: EventCategoryBucket }[] = [
+  { pattern: /עבודה|משמרת|משרד|פגיש|work|shift|meeting/i, category: "work" },
+  { pattern: /לימוד|אוניברסיט|מבחן|קורס|study|exam|school|course/i, category: "study" },
+  { pattern: /ספורט|ריצה|כושר|אימון|שחיה|יוגה|ג'יטסו|gym|run|sport|yoga/i, category: "sport" },
+  { pattern: /רופא|תור|בריאות|שיניים|doctor|health|dentist|חשוב|important/i, category: "important" },
+  { pattern: /משימ|סידור|todo|task|errand|קניות|סופר|shopping|בית|chores/i, category: "chores" },
+  // Anything else (dinner, hobbies, trips, family, friends...) reads as
+  // unstructured downtime — bucketed as "leisure and friends" by default.
 ];
 
-function hashString(input: string): number {
-  let hash = 0;
-  for (let i = 0; i < input.length; i++) {
-    hash = (hash << 5) - hash + input.charCodeAt(i);
-    hash |= 0;
-  }
-  return Math.abs(hash);
+export function categoryBucketOf(category: string): EventCategoryBucket {
+  const normalized = category.trim().toLowerCase();
+  const match = CATEGORY_PATTERNS.find((c) => c.pattern.test(normalized));
+  return match ? match.category : "leisure";
 }
 
 export function categoryAccentColor(category: string): string {
-  const normalized = category.trim().toLowerCase();
-  const semantic = CATEGORY_HUES.find((c) => c.pattern.test(normalized));
-  const hue = semantic ? semantic.hue : hashString(normalized) % 360;
-  return `hsl(${hue}, 85%, 68%)`;
+  return CATEGORY_COLORS[categoryBucketOf(category)];
 }

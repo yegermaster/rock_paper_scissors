@@ -6,10 +6,17 @@ export const DEFAULT_UNTIMED_MINUTES = 22 * 60 + 30; // 22:30
 export const DEFAULT_UNTIMED_DURATION = 30;
 export const DEFAULT_EVENT_DURATION = 60; // events with a start but no stated end
 
-// Full 24h so night shifts / late activity (23:00-07:00) are visible —
-// previously clipped to a 6:00-23:00 "daytime" window.
-export const GRID_START_MINUTES = 0; // 00:00
-export const GRID_END_MINUTES = 24 * 60; // 24:00 (midnight, end of day)
+// The week grid's vertical range is computed per-render (see
+// computeGridRange below) rather than fixed: always showing all 24 hours
+// made a typical, mostly-daytime week awkwardly tall with hours of empty
+// space, while clipping to a fixed daytime window hid real night activity.
+// The absolute day boundary is still needed for "does this event cross
+// midnight" checks regardless of the currently-visible range.
+export const ABSOLUTE_DAY_START = 0; // 00:00
+export const ABSOLUTE_DAY_END = 24 * 60; // 24:00 (midnight, end of day)
+
+const DEFAULT_GRID_START_MINUTES = 7 * 60; // 07:00
+const DEFAULT_GRID_END_MINUTES = 22 * 60; // 22:00
 
 export function displayStartMinutes(occ: Occurrence): number {
   if (!occ.event.start_time) return DEFAULT_UNTIMED_MINUTES;
@@ -60,6 +67,23 @@ export function computeOverlapKeys(dayOccs: Occurrence[]): Set<string> {
   return overlapping;
 }
 
+/** The week grid's visible hour range for one render: a sane default
+ * (07:00-22:00) widened to fit any occurrence that falls outside it (e.g.
+ * a 06:00 flight or a 23:00 night shift), rounded to whole hours. Spans
+ * render as their own bar above the grid, so they don't affect this. */
+export function computeGridRange(occurrences: Occurrence[]): { start: number; end: number } {
+  let start = DEFAULT_GRID_START_MINUTES;
+  let end = DEFAULT_GRID_END_MINUTES;
+  for (const occ of occurrences) {
+    if (occ.isMultiDaySpan) continue;
+    const s = displayStartMinutes(occ);
+    const e = Math.min(s + displayDuration(occ), ABSOLUTE_DAY_END);
+    if (s < start) start = Math.floor(s / 60) * 60;
+    if (e > end) end = Math.min(ABSOLUTE_DAY_END, Math.ceil(e / 60) * 60);
+  }
+  return { start: Math.max(ABSOLUTE_DAY_START, start), end: Math.min(ABSOLUTE_DAY_END, end) };
+}
+
 export type LaidOutBlock = {
   occ: Occurrence;
   top: number; // px from grid top
@@ -70,12 +94,17 @@ export type LaidOutBlock = {
 
 /** Greedy overlap-column layout: not globally optimal packing, but simple
  * and visually correct for the low event-density this app expects. */
-export function layoutDayColumn(occs: Occurrence[], hourHeightPx: number): LaidOutBlock[] {
+export function layoutDayColumn(
+  occs: Occurrence[],
+  hourHeightPx: number,
+  gridStart: number,
+  gridEnd: number
+): LaidOutBlock[] {
   const items = occs
     .map((occ) => {
-      const start = Math.max(displayStartMinutes(occ), GRID_START_MINUTES);
+      const start = Math.max(displayStartMinutes(occ), gridStart);
       const rawEnd = displayStartMinutes(occ) + displayDuration(occ);
-      const end = Math.min(Math.max(rawEnd, start + 15), GRID_END_MINUTES);
+      const end = Math.min(Math.max(rawEnd, start + 15), gridEnd);
       return { occ, start, end };
     })
     .sort((a, b) => a.start - b.start || b.end - a.end);
@@ -95,7 +124,7 @@ export function layoutDayColumn(occs: Occurrence[], hourHeightPx: number): LaidO
       occ: item.occ,
       start: item.start,
       end: item.end,
-      top: ((item.start - GRID_START_MINUTES) / 60) * hourHeightPx,
+      top: ((item.start - gridStart) / 60) * hourHeightPx,
       // Floor raised (14 -> 26) so the larger event-block text still fits
       // legibly even for a 15-minute-long occurrence.
       height: Math.max(((item.end - item.start) / 60) * hourHeightPx, 26),

@@ -2,12 +2,12 @@ import { WEEKDAY_LABELS, addDays, dayOfWeek } from "../dates";
 import { hebrewDateShort } from "../hebrew-date";
 import { he } from "../bidi";
 import { THEME } from "../theme";
-import { renderPeopleLegend, LEGEND_HEIGHT } from "../legend";
+import { renderLegends, LEGENDS_HEIGHT } from "../legend";
 import { normalizePerson, personFill } from "../people";
 import { categoryAccentColor } from "../category-color";
 import {
-  GRID_START_MINUTES,
-  GRID_END_MINUTES,
+  ABSOLUTE_DAY_END,
+  computeGridRange,
   computeOverlapKeys,
   displayDuration,
   displayStartMinutes,
@@ -23,12 +23,11 @@ import type { Occurrence } from "../types";
 const OVERLAP_YELLOW = "#fde047";
 
 const WIDTH = 1900;
-const GUTTER = 96;
+const GUTTER = 100;
 const DAY_WIDTH = (WIDTH - GUTTER) / 7;
-const HOUR_HEIGHT = 68;
-const GRID_HEIGHT = ((GRID_END_MINUTES - GRID_START_MINUTES) / 60) * HOUR_HEIGHT;
+const HOUR_HEIGHT = 84;
 const HEADER_HEIGHT = 116;
-const SPAN_ROW_HEIGHT = 52;
+const SPAN_ROW_HEIGHT = 56;
 const MAX_SPAN_ROWS = 2;
 
 // Hebrew calendar convention: the week flows right-to-left — Sunday is the
@@ -90,12 +89,19 @@ export function renderWeekView(
   const visibleSpanRows = spanRows.slice(0, MAX_SPAN_ROWS);
   const spanAreaHeight = visibleSpanRows.length * SPAN_ROW_HEIGHT;
 
-  // Exclusive of GRID_END_MINUTES: one mark per row, matching GRID_HEIGHT
-  // exactly (an inclusive loop here would add a phantom extra label row).
-  const hourMarks: number[] = [];
-  for (let m = GRID_START_MINUTES; m < GRID_END_MINUTES; m += 60) hourMarks.push(m);
+  // Shrink-to-fit hour range: a default daytime window (07:00-22:00),
+  // widened only when an actual occurrence falls outside it (an early
+  // flight, a night shift) — showing all 24 hours unconditionally made a
+  // typical, mostly-daytime week awkwardly tall for no reason.
+  const { start: gridStart, end: gridEnd } = computeGridRange(occurrences);
+  const GRID_HEIGHT = ((gridEnd - gridStart) / 60) * HOUR_HEIGHT;
 
-  const height = HEADER_HEIGHT + spanAreaHeight + GRID_HEIGHT + LEGEND_HEIGHT + 8;
+  // Exclusive of gridEnd: one mark per row, matching GRID_HEIGHT exactly
+  // (an inclusive loop here would add a phantom extra label row).
+  const hourMarks: number[] = [];
+  for (let m = gridStart; m < gridEnd; m += 60) hourMarks.push(m);
+
+  const height = HEADER_HEIGHT + spanAreaHeight + GRID_HEIGHT + LEGENDS_HEIGHT + 8;
 
   const node = (
     <div
@@ -131,26 +137,26 @@ export function renderWeekView(
                 justifyContent: "center",
               }}
             >
-              <div style={{ fontSize: 21, color: THEME.textMuted, display: "flex" }}>
+              <div style={{ fontSize: 24, color: THEME.textMuted, display: "flex" }}>
                 {he(WEEKDAY_LABELS[dayOfWeek(d)])}
               </div>
               <div
                 style={{
-                  fontSize: 36,
+                  fontSize: 40,
                   fontWeight: 800,
                   color: isToday ? "#ffffff" : THEME.text,
                   display: "flex",
                   backgroundColor: isToday ? THEME.accent : "transparent",
                   borderRadius: 999,
-                  width: 60,
-                  height: 60,
+                  width: 66,
+                  height: 66,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
                 {Number(d.slice(-2))}
               </div>
-              <div style={{ fontSize: 15, color: THEME.textFaint, display: "flex" }}>
+              <div style={{ fontSize: 17, color: THEME.textFaint, display: "flex" }}>
                 {he(hebrewDateShort(d))}
               </div>
             </div>
@@ -189,7 +195,7 @@ export function renderWeekView(
                     alignItems: "center",
                     justifyContent: "flex-end",
                     paddingRight: 16,
-                    fontSize: 20,
+                    fontSize: 24,
                     fontWeight: 700,
                     color: fill.text,
                   }}
@@ -214,7 +220,7 @@ export function renderWeekView(
                 alignItems: "flex-start",
                 justifyContent: "center",
                 paddingTop: 4,
-                fontSize: 16,
+                fontSize: 20,
                 fontWeight: 600,
                 color: THEME.textFaint,
               }}
@@ -226,7 +232,7 @@ export function renderWeekView(
 
         {displayDays.map((d) => {
           const dayOccs = byDay.get(d) ?? [];
-          const laidOut = layoutDayColumn(dayOccs, HOUR_HEIGHT);
+          const laidOut = layoutDayColumn(dayOccs, HOUR_HEIGHT, gridStart, gridEnd);
           const overlapKeys = computeOverlapKeys(dayOccs);
           const isToday = d === today;
           return (
@@ -267,12 +273,12 @@ export function renderWeekView(
                 // flag it so the block reads as "continues" rather than
                 // looking like it simply ends there.
                 const spillsPastMidnight =
-                  displayStartMinutes(block.occ) + displayDuration(block.occ) > GRID_END_MINUTES;
+                  displayStartMinutes(block.occ) + displayDuration(block.occ) > ABSOLUTE_DAY_END;
                 const accent = categoryAccentColor(block.occ.event.category);
                 // Narrower blocks (two occurrences sharing a column) need a
-                // shorter title or the bold 19px text wraps to a second
+                // shorter title or the bold 23px text wraps to a second
                 // line and collides with the time label below it.
-                const maxTitleChars = Math.max(4, Math.min(16, Math.floor((blockWidth - 40) / 12)));
+                const maxTitleChars = Math.max(4, Math.min(15, Math.floor((blockWidth - 44) / 14)));
                 const showSpillNote = spillsPastMidnight && block.numCols === 1;
                 const showOverlapNote = isOverlap && block.numCols === 1;
                 // Explicit per-side borders (rather than the `border`
@@ -305,8 +311,8 @@ export function renderWeekView(
                       flexDirection: "column",
                       alignItems: "flex-end",
                       overflow: "hidden",
-                      padding: 9,
-                      fontSize: 19,
+                      padding: 10,
+                      fontSize: 23,
                       color: fill.text,
                     }}
                   >
@@ -314,7 +320,7 @@ export function renderWeekView(
                       {he(truncate(block.occ.event.title, maxTitleChars))}
                     </div>
                     {block.occ.event.start_time && (
-                      <div style={{ fontSize: 15, opacity: 0.9, display: "flex" }}>
+                      <div style={{ fontSize: 18, opacity: 0.9, display: "flex" }}>
                         {minutesToLabel(
                           Number(block.occ.event.start_time.slice(0, 2)) * 60 +
                             Number(block.occ.event.start_time.slice(3, 5))
@@ -322,12 +328,12 @@ export function renderWeekView(
                       </div>
                     )}
                     {showOverlapNote && (
-                      <div style={{ fontSize: 13, opacity: 0.95, display: "flex", color: OVERLAP_YELLOW }}>
+                      <div style={{ fontSize: 15, opacity: 0.95, display: "flex", color: OVERLAP_YELLOW }}>
                         {he("חופפים בזמן")}
                       </div>
                     )}
                     {showSpillNote && (
-                      <div style={{ fontSize: 13, opacity: 0.85, display: "flex" }}>{he("⋯ נמשך אחרי חצות")}</div>
+                      <div style={{ fontSize: 15, opacity: 0.85, display: "flex" }}>{he("⋯ נמשך אחרי חצות")}</div>
                     )}
                   </div>
                 );
@@ -337,7 +343,7 @@ export function renderWeekView(
         })}
       </div>
 
-      {renderPeopleLegend(WIDTH)}
+      {renderLegends(WIDTH)}
     </div>
   );
 
