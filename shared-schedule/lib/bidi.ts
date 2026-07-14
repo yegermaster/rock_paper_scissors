@@ -36,3 +36,34 @@ export function he(input: string): string {
     .map((r) => (r.ltr ? r.text : [...r.text].reverse().join("")))
     .join("");
 }
+
+/** Wraps text across multiple lines for a bidi-unaware renderer.
+ *
+ * Naively CSS-wrapping the output of he() would be wrong: he() reverses
+ * the whole string for visual order assuming it renders as ONE line, so
+ * letting Satori line-break that already-reversed string would split it
+ * at the wrong (relocated) point and jumble word order across lines. This
+ * wraps the ORIGINAL (logical) text into word-safe lines first — keeping
+ * line order top-to-bottom the same as normal paragraph flow, since only
+ * the within-line direction is right-to-left — then runs he() on each
+ * line independently. Truncates the whole text to maxTotalChars first
+ * (not per-line), so "how much text total" stays predictable regardless
+ * of how many lines it wraps into.
+ */
+export function heWrap(text: string, maxCharsPerLine: number, maxTotalChars: number): string[] {
+  const truncated = text.length > maxTotalChars ? text.slice(0, maxTotalChars - 1) + "…" : text;
+  const words = truncated.split(" ");
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+    if (candidate.length <= maxCharsPerLine || !current) {
+      current = candidate;
+    } else {
+      lines.push(current);
+      current = word;
+    }
+  }
+  if (current) lines.push(current);
+  return lines.map((line) => he(line));
+}

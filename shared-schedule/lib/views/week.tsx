@@ -1,6 +1,6 @@
 import { WEEKDAY_LABELS, addDays, dayOfWeek } from "../dates";
 import { hebrewDateShort } from "../hebrew-date";
-import { he } from "../bidi";
+import { he, heWrap } from "../bidi";
 import { THEME } from "../theme";
 import { renderLegends, LEGENDS_HEIGHT } from "../legend";
 import { normalizePerson, personFill } from "../people";
@@ -22,8 +22,11 @@ import type { Occurrence } from "../types";
 // amber used for errors elsewhere.
 const OVERLAP_YELLOW = "#fde047";
 
-const WIDTH = 1900;
-const GUTTER = 100;
+// Widened substantially so a day column has real room for text — this is
+// a downloadable/viewable image, not a fixed viewport, so there's no cost
+// to making it wide enough to be legible.
+const WIDTH = 2600;
+const GUTTER = 110;
 const DAY_WIDTH = (WIDTH - GUTTER) / 7;
 const HOUR_HEIGHT = 84;
 const HEADER_HEIGHT = 116;
@@ -33,6 +36,11 @@ const MAX_SPAN_ROWS = 2;
 // (not a proportional sliver), so it stays a consistent, legible size no
 // matter how tall the block itself gets for a long event.
 const HEADER_BAR_HEIGHT = 46;
+const TITLE_FONT_SIZE = 26;
+const TITLE_LINE_HEIGHT = 34;
+// Full title text up to this many characters — wraps across lines rather
+// than cutting off early; only hidden past this point.
+const MAX_TITLE_CHARS = 30;
 
 // Hebrew calendar convention: the week flows right-to-left — Sunday is the
 // RIGHTMOST column, Saturday leftmost. The hour gutter sits at the LEFT
@@ -293,9 +301,15 @@ export function renderWeekView(
                 const spillsPastMidnight =
                   displayStartMinutes(block.occ) + displayDuration(block.occ) > ABSOLUTE_DAY_END;
                 const accent = categoryAccentColor(block.occ.event.category);
-                // Narrower blocks (two occurrences sharing a column) need a
-                // shorter title or the bold 26px text wraps and overflows.
-                const maxTitleChars = Math.max(4, Math.min(15, Math.floor((blockWidth - 44) / 14)));
+                // Wrap (don't just cut off) the title across lines — full
+                // text up to MAX_TITLE_CHARS matters more than staying
+                // strictly duration-proportional. Chars-per-line floor of
+                // 8 caps this at 4 lines even in a heavily-split column.
+                const bodyPadding = 20;
+                const charsPerLine = Math.max(8, Math.floor((blockWidth - bodyPadding) / 16));
+                const titleLines = heWrap(block.occ.event.title, charsPerLine, MAX_TITLE_CHARS);
+                const requiredHeight =
+                  HEADER_BAR_HEIGHT + titleLines.length * TITLE_LINE_HEIGHT + bodyPadding;
                 const timeLabel = block.occ.event.start_time
                   ? minutesToLabel(
                       Number(block.occ.event.start_time.slice(0, 2)) * 60 +
@@ -310,7 +324,7 @@ export function renderWeekView(
                       top: block.top,
                       left: block.colIndex * blockWidth + 2,
                       width: blockWidth - 4,
-                      height: block.height - 3,
+                      height: Math.max(block.height - 3, requiredHeight),
                       display: "flex",
                       flexDirection: "column",
                       borderRadius: 8,
@@ -337,7 +351,8 @@ export function renderWeekView(
                         padding: "0 10px",
                         fontSize: 20,
                         fontWeight: 800,
-                        color: "#1a2332",
+                        color: "#ffffff",
+                        textShadow: "0 1px 3px rgba(0,0,0,0.55)",
                       }}
                     >
                       {timeLabel && he(spillsPastMidnight ? `${timeLabel} …` : timeLabel)}
@@ -353,14 +368,16 @@ export function renderWeekView(
                         backgroundColor: fill.backgroundColor,
                         backgroundImage: fill.backgroundImage,
                         padding: 10,
-                        fontSize: 26,
+                        fontSize: TITLE_FONT_SIZE,
                         fontWeight: 800,
                         color: fill.text,
                       }}
                     >
-                      <div style={{ display: "flex", whiteSpace: "nowrap" }}>
-                        {he(truncate(block.occ.event.title, maxTitleChars))}
-                      </div>
+                      {titleLines.map((line, i) => (
+                        <div key={i} style={{ display: "flex", whiteSpace: "nowrap" }}>
+                          {line}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 );

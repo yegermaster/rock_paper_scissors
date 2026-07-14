@@ -35,7 +35,10 @@ function legendRow(
               marginLeft: 8,
               display: "flex",
               backgroundColor: item.backgroundColor,
-              backgroundImage: item.backgroundImage,
+              // Only set when present: an explicit `backgroundImage:
+              // undefined` key (rather than the key being absent) makes
+              // Satori's style parser crash — bitten by this before.
+              ...(item.backgroundImage ? { backgroundImage: item.backgroundImage } : {}),
             }}
           />
           <div style={{ fontSize: 16, fontWeight: 600, color: THEME.textMuted, display: "flex" }}>
@@ -55,11 +58,12 @@ export function renderLegends(width: number) {
     const fill = personFill(person);
     return { key: person, label: PEOPLE_LABELS[person], backgroundColor: fill.backgroundColor, backgroundImage: fill.backgroundImage };
   });
+  // Categories are always a single flat color (unlike "both" for people,
+  // which needs an actual two-color gradient) — no backgroundImage needed.
   const categoryItems = ALL_CATEGORIES.map((cat) => ({
     key: cat,
     label: CATEGORY_LABELS[cat],
     backgroundColor: CATEGORY_COLORS[cat],
-    backgroundImage: `linear-gradient(${CATEGORY_COLORS[cat]}, ${CATEGORY_COLORS[cat]})`,
   }));
 
   return (

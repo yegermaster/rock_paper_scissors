@@ -1,9 +1,14 @@
-// A small accent color per event category, shown as a thin stripe on top
-// of the person-based fill (blue/pink/gradient) so events also read as
-// "what kind of thing is this" at a glance. Categories are open-ended free
-// text, so we bucket common keywords into six broad, low-eye-strain
-// pastel categories (palette chosen for calm long-session readability,
-// not saturated/loud colors).
+// A color per event category, shown as its own header zone (week view) or
+// a dot swatch (month view) so events also read as "what kind of thing is
+// this" at a glance. Categories are open-ended free text, so we bucket
+// common keywords into six broad categories.
+//
+// Deliberately vivid/saturated ("Tailwind 500-600" range), not pastel —
+// an earlier pastel palette proved too washed-out to read at a glance,
+// especially at small sizes. Each hue is also chosen to stay visually
+// distinct from the two person colors (a fairly saturated blue #3b82f6
+// and pink #ec4899) so a category zone never blends into the person zone
+// next to it.
 //
 // Rendered as flat CSS shapes (never text/emoji): the fonts loaded for the
 // calendar image only cover Hebrew + Latin glyphs, so any emoji character
@@ -20,12 +25,12 @@ export const CATEGORY_LABELS: Record<EventCategoryBucket, string> = {
 };
 
 export const CATEGORY_COLORS: Record<EventCategoryBucket, string> = {
-  work: "#A9CCE3", // pastel blue — cool, easy on the eyes for work items
-  study: "#D7BDE2", // light purple — distinct from work, avoids confusion
-  sport: "#F5CBA7", // peach orange — warm/energetic but low-saturation
-  leisure: "#A3E4D7", // mint green — soothing, separates downtime from tasks
-  chores: "#D5D8DC", // blue-gray — neutral, low-priority routine tasks
-  important: "#F5B7B1", // delicate red-pink — noticeable without being alarming
+  work: "#0ea5e9", // vivid sky-blue — distinct from Itamar's more indigo blue
+  study: "#a855f7", // vivid violet
+  sport: "#f97316", // vivid orange
+  leisure: "#22c55e", // vivid green
+  chores: "#64748b", // slate — still a real color, just the calmest of the six
+  important: "#ef4444", // vivid red — distinct from Hadas's more magenta pink
 };
 
 const CATEGORY_PATTERNS: { pattern: RegExp; category: EventCategoryBucket }[] = [

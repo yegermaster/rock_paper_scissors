@@ -1,21 +1,29 @@
 import { WEEKDAY_LABELS, dayOfWeek, daysInMonth, MONTH_LABELS } from "../dates";
 import { hebrewDateShort } from "../hebrew-date";
-import { he } from "../bidi";
+import { he, heWrap } from "../bidi";
 import { THEME } from "../theme";
 import { renderLegends, LEGENDS_HEIGHT } from "../legend";
 import { normalizePerson, personFill } from "../people";
 import { categoryAccentColor } from "../category-color";
-import { computeOverlapKeys, displayStartMinutes, occurrenceKey, truncate } from "../render-helpers";
+import { computeOverlapKeys, displayStartMinutes, occurrenceKey } from "../render-helpers";
 import type { Occurrence } from "../types";
 
 // Matches the calm-yellow overlap notice used in the week view.
 const OVERLAP_YELLOW = "#fde047";
 
-const WIDTH = 1900;
+// Widened to match the week view — gives each chip enough room that most
+// real titles fit on one line at a generous length instead of the old
+// 10-12 character cutoff.
+const WIDTH = 2600;
 const HEADER_HEIGHT = 96;
 const WEEKDAY_ROW_HEIGHT = 54;
 const MAX_CHIPS_PER_CELL = 3;
-const CELL_HEIGHT = 250;
+const CELL_HEIGHT = 280;
+// Full title up to this many characters — a chip wraps to a 2nd line for
+// a long title rather than cutting off early (capped at 2, not the week
+// view's 4, so the month grid stays a compact overview).
+const MAX_TITLE_CHARS = 30;
+const CHIP_LINE_HEIGHT = 24;
 
 // Hebrew calendar convention: weeks flow right-to-left — Sunday is the
 // rightmost cell of each row. Reverse each row's physical order.
@@ -168,12 +176,17 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
                         const isOverlap = overlapKeys.has(occurrenceKey(occ));
                         const isSpanContinuation = occ.isMultiDaySpan && occ.date !== occ.spanStart;
                         const accent = categoryAccentColor(occ.event.category);
+                        // Chip usable width minus cell padding, the dot,
+                        // its margin, and the chip's own padding.
+                        const usableWidth = cellWidth - 16 - 13 - 7 - 18;
+                        const charsPerLine = Math.max(10, Math.floor(usableWidth / 12.5));
+                        const lines = heWrap(occ.event.title, charsPerLine, MAX_TITLE_CHARS).slice(0, 2);
                         return (
                           <div
                             key={occ.event.id + occ.date}
                             style={{
                               display: "flex",
-                              alignItems: "center",
+                              alignItems: "flex-start",
                               justifyContent: "flex-end",
                               fontSize: 20,
                               fontWeight: 700,
@@ -199,14 +212,17 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
                                 backgroundColor: accent,
                                 border: "2px solid rgba(0,0,0,0.4)",
                                 marginLeft: 7,
+                                marginTop: 5,
                                 flexShrink: 0,
                                 display: "flex",
                               }}
                             />
-                            <div style={{ display: "flex", whiteSpace: "nowrap", overflow: "hidden" }}>
-                              {isSpanContinuation
-                                ? he(truncate(occ.event.title, 10)) + " ←"
-                                : he(truncate(occ.event.title, 12))}
+                            <div style={{ display: "flex", flexDirection: "column" }}>
+                              {lines.map((line, i) => (
+                                <div key={i} style={{ display: "flex", whiteSpace: "nowrap", height: CHIP_LINE_HEIGHT }}>
+                                  {i === lines.length - 1 && isSpanContinuation ? `${line} ←` : line}
+                                </div>
+                              ))}
                             </div>
                           </div>
                         );
