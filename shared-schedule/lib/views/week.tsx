@@ -187,20 +187,34 @@ export function renderWeekView(
                     left: left + 3,
                     width,
                     height: SPAN_ROW_HEIGHT - 8,
-                    backgroundColor: fill.backgroundColor,
-                    backgroundImage: fill.backgroundImage,
-                    borderRadius: 10,
-                    borderRight: `7px solid ${accent}`,
                     display: "flex",
-                    alignItems: "center",
-                    justifyContent: "flex-end",
-                    paddingRight: 16,
-                    fontSize: 24,
-                    fontWeight: 700,
-                    color: fill.text,
+                    flexDirection: "column",
+                    borderRadius: 10,
+                    overflow: "hidden",
                   }}
                 >
-                  {he(truncate(span.event.title, 34))}
+                  {/* Category band: a solid strip (not a thin border) with
+                      its own dark separator, so it stays visible even when
+                      the category color's hue is close to the person
+                      color's (pastel blue "work" on a blue Itamar block,
+                      for example). */}
+                  <div style={{ height: 10, width: "100%", backgroundColor: accent, borderBottom: "2px solid rgba(0,0,0,0.35)", display: "flex", flexShrink: 0 }} />
+                  <div
+                    style={{
+                      flex: 1,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "flex-end",
+                      backgroundColor: fill.backgroundColor,
+                      backgroundImage: fill.backgroundImage,
+                      paddingRight: 16,
+                      fontSize: 24,
+                      fontWeight: 700,
+                      color: fill.text,
+                    }}
+                  >
+                    {he(truncate(span.event.title, 34))}
+                  </div>
                 </div>
               );
             })}
@@ -269,9 +283,12 @@ export function renderWeekView(
                 const isOverlap = overlapKeys.has(occurrenceKey(block.occ));
                 const blockWidth = DAY_WIDTH / block.numCols;
                 // A block whose duration runs past midnight gets clamped to
-                // the day's bottom edge (occurrences are per-calendar-day) —
-                // flag it so the block reads as "continues" rather than
-                // looking like it simply ends there.
+                // the day's bottom edge (occurrences are per-calendar-day).
+                // Folded into the time line itself (rather than a separate
+                // caption below it) so it's never lost when the visible
+                // sliver is only an hour tall — a full caption line was
+                // getting silently clipped for exactly the events this was
+                // meant to call out.
                 const spillsPastMidnight =
                   displayStartMinutes(block.occ) + displayDuration(block.occ) > ABSOLUTE_DAY_END;
                 const accent = categoryAccentColor(block.occ.event.category);
@@ -279,13 +296,13 @@ export function renderWeekView(
                 // shorter title or the bold 23px text wraps to a second
                 // line and collides with the time label below it.
                 const maxTitleChars = Math.max(4, Math.min(15, Math.floor((blockWidth - 44) / 14)));
-                const showSpillNote = spillsPastMidnight && block.numCols === 1;
                 const showOverlapNote = isOverlap && block.numCols === 1;
-                // Explicit per-side borders (rather than the `border`
-                // shorthand plus a `borderRight` override) — Satori doesn't
-                // reliably merge a shorthand with a longhand override the
-                // way a real browser's CSSOM does.
-                const borderColorNormal = "rgba(255,255,255,0.15)";
+                const timeLabel = block.occ.event.start_time
+                  ? minutesToLabel(
+                      Number(block.occ.event.start_time.slice(0, 2)) * 60 +
+                        Number(block.occ.event.start_time.slice(3, 5))
+                    )
+                  : null;
                 return (
                   <div
                     key={block.occ.event.id}
@@ -295,46 +312,47 @@ export function renderWeekView(
                       left: block.colIndex * blockWidth + 2,
                       width: blockWidth - 4,
                       height: block.height - 3,
-                      backgroundColor: fill.backgroundColor,
-                      backgroundImage: fill.backgroundImage,
-                      borderRadius: 8,
-                      borderTopWidth: isOverlap ? 3 : 1,
-                      borderBottomWidth: isOverlap ? 3 : 1,
-                      borderLeftWidth: isOverlap ? 3 : 1,
-                      borderRightWidth: isOverlap ? 3 : 6,
-                      borderStyle: "solid",
-                      borderTopColor: isOverlap ? OVERLAP_YELLOW : borderColorNormal,
-                      borderBottomColor: isOverlap ? OVERLAP_YELLOW : borderColorNormal,
-                      borderLeftColor: isOverlap ? OVERLAP_YELLOW : borderColorNormal,
-                      borderRightColor: isOverlap ? OVERLAP_YELLOW : accent,
                       display: "flex",
                       flexDirection: "column",
-                      alignItems: "flex-end",
+                      borderRadius: 8,
+                      border: isOverlap ? `4px solid ${OVERLAP_YELLOW}` : "1px solid rgba(255,255,255,0.15)",
                       overflow: "hidden",
-                      padding: 10,
-                      fontSize: 23,
-                      color: fill.text,
                     }}
                   >
-                    <div style={{ fontWeight: 800, display: "flex", whiteSpace: "nowrap" }}>
-                      {he(truncate(block.occ.event.title, maxTitleChars))}
+                    {/* Category band: a solid strip (not a thin border)
+                        with its own dark separator, so it stays visible
+                        even when the category color's hue is close to the
+                        person color's (pastel blue "work" on a blue
+                        Itamar block, for example). */}
+                    <div style={{ height: 10, width: "100%", backgroundColor: accent, borderBottom: "2px solid rgba(0,0,0,0.35)", display: "flex", flexShrink: 0 }} />
+                    <div
+                      style={{
+                        flex: 1,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "flex-end",
+                        overflow: "hidden",
+                        backgroundColor: fill.backgroundColor,
+                        backgroundImage: fill.backgroundImage,
+                        padding: 10,
+                        fontSize: 23,
+                        color: fill.text,
+                      }}
+                    >
+                      <div style={{ fontWeight: 800, display: "flex", whiteSpace: "nowrap" }}>
+                        {he(truncate(block.occ.event.title, maxTitleChars))}
+                      </div>
+                      {timeLabel && (
+                        <div style={{ fontSize: 18, opacity: 0.9, display: "flex", whiteSpace: "nowrap" }}>
+                          {he(spillsPastMidnight ? `${timeLabel} …` : timeLabel)}
+                        </div>
+                      )}
+                      {showOverlapNote && (
+                        <div style={{ fontSize: 15, opacity: 0.95, display: "flex", color: OVERLAP_YELLOW }}>
+                          {he("חופפים בזמן")}
+                        </div>
+                      )}
                     </div>
-                    {block.occ.event.start_time && (
-                      <div style={{ fontSize: 18, opacity: 0.9, display: "flex" }}>
-                        {minutesToLabel(
-                          Number(block.occ.event.start_time.slice(0, 2)) * 60 +
-                            Number(block.occ.event.start_time.slice(3, 5))
-                        )}
-                      </div>
-                    )}
-                    {showOverlapNote && (
-                      <div style={{ fontSize: 15, opacity: 0.95, display: "flex", color: OVERLAP_YELLOW }}>
-                        {he("חופפים בזמן")}
-                      </div>
-                    )}
-                    {showSpillNote && (
-                      <div style={{ fontSize: 15, opacity: 0.85, display: "flex" }}>{he("⋯ נמשך אחרי חצות")}</div>
-                    )}
                   </div>
                 );
               })}

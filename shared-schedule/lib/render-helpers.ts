@@ -125,9 +125,11 @@ export function layoutDayColumn(
       start: item.start,
       end: item.end,
       top: ((item.start - gridStart) / 60) * hourHeightPx,
-      // Floor raised (14 -> 26) so the larger event-block text still fits
-      // legibly even for a 15-minute-long occurrence.
-      height: Math.max(((item.end - item.start) / 60) * hourHeightPx, 26),
+      // Floor raised so the block always has room for its category band +
+      // title + time at the current (large) font sizes, even for a very
+      // short occurrence — a squeezed block that clips its own text is
+      // worse than one that's a bit taller than its exact duration.
+      height: Math.max(((item.end - item.start) / 60) * hourHeightPx, 76),
       colIndex,
       numCols: 1, // filled in below
     });

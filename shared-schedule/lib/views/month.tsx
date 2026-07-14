@@ -168,12 +168,12 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
                         const isOverlap = overlapKeys.has(occurrenceKey(occ));
                         const isSpanContinuation = occ.isMultiDaySpan && occ.date !== occ.spanStart;
                         const accent = categoryAccentColor(occ.event.category);
-                        const borderColorNormal = "rgba(255,255,255,0.15)";
                         return (
                           <div
                             key={occ.event.id + occ.date}
                             style={{
                               display: "flex",
+                              alignItems: "center",
                               justifyContent: "flex-end",
                               fontSize: 20,
                               fontWeight: 700,
@@ -181,23 +181,33 @@ export function renderMonthView(monthStart: string, occurrences: Occurrence[], t
                               backgroundImage: fill.backgroundImage,
                               color: fill.text,
                               borderRadius: 6,
-                              borderTopWidth: isOverlap ? 3 : 1,
-                              borderBottomWidth: isOverlap ? 3 : 1,
-                              borderLeftWidth: isOverlap ? 3 : 1,
-                              borderRightWidth: isOverlap ? 3 : 6,
-                              borderStyle: "solid",
-                              borderTopColor: isOverlap ? OVERLAP_YELLOW : borderColorNormal,
-                              borderBottomColor: isOverlap ? OVERLAP_YELLOW : borderColorNormal,
-                              borderLeftColor: isOverlap ? OVERLAP_YELLOW : borderColorNormal,
-                              borderRightColor: isOverlap ? OVERLAP_YELLOW : accent,
+                              border: isOverlap ? `3px solid ${OVERLAP_YELLOW}` : "1px solid rgba(255,255,255,0.15)",
                               padding: "5px 9px",
                               marginBottom: 5,
                               overflow: "hidden",
                             }}
                           >
-                            {isSpanContinuation
-                              ? he(truncate(occ.event.title, 10)) + " ←"
-                              : he(truncate(occ.event.title, 12))}
+                            {/* Category dot: a solid ring-outlined swatch
+                                (not a thin edge border) so it stays visible
+                                even when the category color's hue is close
+                                to the person color's. */}
+                            <div
+                              style={{
+                                width: 13,
+                                height: 13,
+                                borderRadius: 999,
+                                backgroundColor: accent,
+                                border: "2px solid rgba(0,0,0,0.4)",
+                                marginLeft: 7,
+                                flexShrink: 0,
+                                display: "flex",
+                              }}
+                            />
+                            <div style={{ display: "flex", whiteSpace: "nowrap", overflow: "hidden" }}>
+                              {isSpanContinuation
+                                ? he(truncate(occ.event.title, 10)) + " ←"
+                                : he(truncate(occ.event.title, 12))}
+                            </div>
                           </div>
                         );
                       });
