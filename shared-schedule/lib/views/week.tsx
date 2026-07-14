@@ -29,6 +29,10 @@ const HOUR_HEIGHT = 84;
 const HEADER_HEIGHT = 116;
 const SPAN_ROW_HEIGHT = 56;
 const MAX_SPAN_ROWS = 2;
+// Fixed-height category bar at the top of every event block — a real zone
+// (not a proportional sliver), so it stays a consistent, legible size no
+// matter how tall the block itself gets for a long event.
+const HEADER_BAR_HEIGHT = 46;
 
 // Hebrew calendar convention: the week flows right-to-left — Sunday is the
 // RIGHTMOST column, Saturday leftmost. The hour gutter sits at the LEFT
@@ -284,19 +288,14 @@ export function renderWeekView(
                 const blockWidth = DAY_WIDTH / block.numCols;
                 // A block whose duration runs past midnight gets clamped to
                 // the day's bottom edge (occurrences are per-calendar-day).
-                // Folded into the time line itself (rather than a separate
-                // caption below it) so it's never lost when the visible
-                // sliver is only an hour tall — a full caption line was
-                // getting silently clipped for exactly the events this was
-                // meant to call out.
+                // Folded into the time text itself so it's never lost when
+                // the visible sliver is only an hour tall.
                 const spillsPastMidnight =
                   displayStartMinutes(block.occ) + displayDuration(block.occ) > ABSOLUTE_DAY_END;
                 const accent = categoryAccentColor(block.occ.event.category);
                 // Narrower blocks (two occurrences sharing a column) need a
-                // shorter title or the bold 23px text wraps to a second
-                // line and collides with the time label below it.
+                // shorter title or the bold 26px text wraps and overflows.
                 const maxTitleChars = Math.max(4, Math.min(15, Math.floor((blockWidth - 44) / 14)));
-                const showOverlapNote = isOverlap && block.numCols === 1;
                 const timeLabel = block.occ.event.start_time
                   ? minutesToLabel(
                       Number(block.occ.event.start_time.slice(0, 2)) * 60 +
@@ -319,39 +318,49 @@ export function renderWeekView(
                       overflow: "hidden",
                     }}
                   >
-                    {/* Category band: a solid strip (not a thin border)
-                        with its own dark separator, so it stays visible
-                        even when the category color's hue is close to the
-                        person color's (pastel blue "work" on a blue
-                        Itamar block, for example). */}
-                    <div style={{ height: 10, width: "100%", backgroundColor: accent, borderBottom: "2px solid rgba(0,0,0,0.35)", display: "flex", flexShrink: 0 }} />
+                    {/* Category header bar: a real, generously-sized zone
+                        (not a hairline accent) carrying the time — stays
+                        clearly legible on its own regardless of how tall
+                        the person-color body below ends up being for a
+                        long event, and gives the time a dedicated,
+                        high-contrast spot instead of fading into the fill. */}
+                    <div
+                      style={{
+                        height: HEADER_BAR_HEIGHT,
+                        width: "100%",
+                        flexShrink: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "flex-end",
+                        backgroundColor: accent,
+                        borderBottom: "2px solid rgba(0,0,0,0.35)",
+                        padding: "0 10px",
+                        fontSize: 20,
+                        fontWeight: 800,
+                        color: "#1a2332",
+                      }}
+                    >
+                      {timeLabel && he(spillsPastMidnight ? `${timeLabel} …` : timeLabel)}
+                    </div>
                     <div
                       style={{
                         flex: 1,
                         display: "flex",
                         flexDirection: "column",
                         alignItems: "flex-end",
+                        justifyContent: "center",
                         overflow: "hidden",
                         backgroundColor: fill.backgroundColor,
                         backgroundImage: fill.backgroundImage,
                         padding: 10,
-                        fontSize: 23,
+                        fontSize: 26,
+                        fontWeight: 800,
                         color: fill.text,
                       }}
                     >
-                      <div style={{ fontWeight: 800, display: "flex", whiteSpace: "nowrap" }}>
+                      <div style={{ display: "flex", whiteSpace: "nowrap" }}>
                         {he(truncate(block.occ.event.title, maxTitleChars))}
                       </div>
-                      {timeLabel && (
-                        <div style={{ fontSize: 18, opacity: 0.9, display: "flex", whiteSpace: "nowrap" }}>
-                          {he(spillsPastMidnight ? `${timeLabel} …` : timeLabel)}
-                        </div>
-                      )}
-                      {showOverlapNote && (
-                        <div style={{ fontSize: 15, opacity: 0.95, display: "flex", color: OVERLAP_YELLOW }}>
-                          {he("חופפים בזמן")}
-                        </div>
-                      )}
                     </div>
                   </div>
                 );
